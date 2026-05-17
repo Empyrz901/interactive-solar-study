@@ -16,6 +16,7 @@ const state = {
   occupants: '4',
   equipments: ['Cumulus / ECS', 'Climatisation'],
   panels: 12,
+  panelWc: 500,
   inverter: 'Micro-onduleurs',
   orientation: '180',
   tilt: '30',
@@ -50,7 +51,7 @@ function formatNumber(value) {
 }
 
 function kwc() {
-  return (Number(state.panels || 0) * 0.5).toFixed(1).replace('.', ',');
+  return ((Number(state.panels || 0) * Number(state.panelWc || 0)) / 1000).toFixed(1).replace('.', ',');
 }
 
 function annualProduction() {
@@ -209,7 +210,7 @@ function renderReport() {
         <div class="panel install-panel">
           ${sectionNumber(3, "L'INSTALLATION PROPOSÉE")}
           <div class="metrics">
-            <div><span>NB PANNEAUX</span><strong>${textValue(state.panels)}</strong><small>× 500 Wc</small></div>
+            <div><span>NB PANNEAUX</span><strong>${textValue(state.panels)}</strong><small>× ${formatNumber(state.panelWc)} Wc</small></div>
             <div><span>PUISSANCE</span><strong>${kwc()} kWc</strong><small>totale installée</small></div>
             <div><span>ONDULEUR</span><strong>${textValue(state.inverter)}</strong><small>type / marque</small></div>
             <div><span>ORIENTATION</span><strong>${textValue(state.orientation)}°</strong><small>${textValue(state.tilt)}° d'inclinaison</small></div>
@@ -321,6 +322,7 @@ function renderControls() {
         <summary>Installation</summary>
         <div class="form-grid">
           ${input('Nombre de panneaux', 'panels', 'number', 'min="1"')}
+          ${input('Puissance panneau (Wc)', 'panelWc', 'number', 'min="1"')}
           ${input('Onduleur', 'inverter')}
           ${input('Orientation (degrés)', 'orientation', 'number')}
           ${input('Inclinaison (degrés)', 'tilt', 'number')}
