@@ -1,0 +1,28 @@
+{
+  "name": "interactive-solar-study",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Empyrz901/interactive-solar-study.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Empyrz901/interactive-solar-study/issues"
+  },
+  "homepage": "https://github.com/Empyrz901/interactive-solar-study#readme",
+  "devDependencies": {
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "vite": "^8.0.13"
+  }
+}
