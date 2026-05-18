@@ -290,7 +290,7 @@ function renderReport() {
         <div class="panel production-panel">
           <div class="title-row">${sectionNumber(4, 'PRODUCTION ANNUELLE')}</div>
           ${renderChart()}
-          <p class="annual"><strong>PRODUCTION ANNUELLE ESTIMÉE :</strong> <b>${formatNumber(production)} kWh/an</b> <span>Orientation</span></p>
+          <p class="annual"><strong>PRODUCTION ANNUELLE ESTIMÉE :</strong> <b>${formatNumber(production)} kWh/an</b> <span>Selon pans</span></p>
         </div>
 
         <div class="panel split-panel">
