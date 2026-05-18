@@ -84,6 +84,13 @@ function adjustedConsumption() {
   return Number(state.consumption || 0) + equipmentConsumption();
 }
 
+function householdLoadFactor() {
+  const baseConsumption = Number(state.consumption || 0);
+  const totalConsumption = adjustedConsumption();
+  if (!baseConsumption || !totalConsumption) return 1;
+  return Math.min(1, baseConsumption / totalConsumption);
+}
+
 function selfUseRate() {
   return Math.max(0, Math.min(100, Number(state.selfUse || 0))) / 100;
 }
@@ -97,7 +104,7 @@ function exportedKwh() {
 }
 
 function billSaving() {
-  return Math.round(selfConsumedKwh() * defaultElectricityRate);
+  return Math.round(selfConsumedKwh() * defaultElectricityRate * householdLoadFactor());
 }
 
 function resaleGain() {
@@ -116,7 +123,7 @@ function batterySelfUseRate() {
 
 function batterySaving() {
   const extraSelfConsumed = Math.max(0, Math.round(annualProduction() * (batterySelfUseRate() - selfUseRate())));
-  return Math.round(extraSelfConsumed * (defaultElectricityRate - defaultExportRate));
+  return Math.round(extraSelfConsumed * (defaultElectricityRate - defaultExportRate) * householdLoadFactor());
 }
 
 function totalGain() {
