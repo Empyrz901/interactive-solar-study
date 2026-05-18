@@ -110,28 +110,53 @@ function renderChart() {
   const maxValue = Math.max(...state.pvCurve, ...state.consoCurve, 100);
   const max = Math.ceil(maxValue / 100) * 100;
   const axis = [max, max * 0.8, max * 0.6, max * 0.4, max * 0.2, 0];
-  const bars = state.pvCurve
-    .map((value, index) => {
-      const pvHeight = Math.max(8, (value / max) * 92);
-      const cHeight = Math.max(8, (state.consoCurve[index] / max) * 92);
-      return `
-        <div class="bar-pair">
-          <div class="bars">
-            <i class="pv" style="height:${pvHeight}%"></i>
-            <i class="use" style="height:${cHeight}%"></i>
-          </div>
-          <b>${months[index]}</b>
-        </div>
-      `;
+  const width = 620;
+  const height = 210;
+  const pad = { left: 28, right: 12, top: 10, bottom: 22 };
+  const plotWidth = width - pad.left - pad.right;
+  const plotHeight = height - pad.top - pad.bottom;
+  const point = (value, index) => {
+    const x = pad.left + (plotWidth / 11) * index;
+    const y = pad.top + plotHeight - (Number(value || 0) / max) * plotHeight;
+    return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+  };
+  const pvPoints = state.pvCurve.map(point);
+  const consoPoints = state.consoCurve.map(point);
+  const path = (points) => points.map(([x, y], index) => `${index ? 'L' : 'M'} ${x} ${y}`).join(' ');
+  const areaPath = `M ${consoPoints[0][0]} ${pad.top + plotHeight} L ${consoPoints
+    .map(([x, y]) => `${x} ${y}`)
+    .join(' L ')} L ${consoPoints[11][0]} ${pad.top + plotHeight} Z`;
+  const grid = axis
+    .map((value) => {
+      const y = pad.top + plotHeight - (value / max) * plotHeight;
+      return `<line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" />`;
     })
     .join('');
+  const xLabels = months
+    .map((month, index) => {
+      const [x] = point(0, index);
+      return `<text x="${x}" y="${height - 4}">${month}</text>`;
+    })
+    .join('');
+  const yLabels = axis
+    .map((value) => {
+      const y = pad.top + plotHeight - (value / max) * plotHeight;
+      return `<text x="${pad.left - 8}" y="${y + 3}">${formatNumber(value)}</text>`;
+    })
+    .join('');
+  const dots = pvPoints.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4" />`).join('');
 
   return `
     <div class="legend"><span><i class="pv-dot"></i>Production PV</span><span><i class="use-dot"></i>Consommation</span></div>
-    <div class="chart-grid">
-      <div class="axis">${axis.map((value) => `<span>${formatNumber(value)}</span>`).join('')}</div>
-      <div class="chart-bars">${bars}</div>
-    </div>
+    <svg class="line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Courbes mensuelles">
+      <g class="chart-grid-lines">${grid}</g>
+      <g class="chart-y-labels">${yLabels}</g>
+      <g class="chart-x-labels">${xLabels}</g>
+      <path class="conso-area" d="${areaPath}" />
+      <path class="conso-line" d="${path(consoPoints)}" />
+      <path class="pv-line" d="${path(pvPoints)}" />
+      <g class="pv-points">${dots}</g>
+    </svg>
   `;
 }
 
@@ -172,6 +197,7 @@ function renderReport() {
   return `
     <article id="report" class="report" aria-label="Étude photovoltaïque">
       <header class="report-header">
+        <span class="sun-mark" aria-hidden="true"></span>
         <div>
           <h1>ÉTUDE PHOTOVOLTAÏQUE</h1>
           <p>Votre projet sur mesure — Synthèse en une page</p>
@@ -191,7 +217,20 @@ function renderReport() {
         <div class="panel photo-panel">
           ${sectionNumber(1, 'PHOTO DE LA MAISON + SIMULATION')}
           <div class="photo-box ${state.photo ? 'has-photo' : ''}">
-            ${state.photo ? `<img src="${state.photo}" alt="Maison du client" />` : '<span>PHOTO CLIENT À INSÉRER</span>'}
+            ${
+              state.photo
+                ? `<img src="${state.photo}" alt="Maison du client" />`
+                : `<div class="house-scene" aria-hidden="true">
+                    <i class="scene-sun"></i>
+                    <i class="roof"></i>
+                    <i class="walls"></i>
+                    <i class="panels"></i>
+                    <i class="door"></i>
+                    <i class="window left"></i>
+                    <i class="window right"></i>
+                    <span>PHOTO CLIENT À INSÉRER</span>
+                  </div>`
+            }
           </div>
         </div>
 
@@ -378,10 +417,25 @@ function render() {
     </main>
   `;
   bindEvents();
+  applyPreviewScale();
 }
 
 function renderPreview() {
   document.querySelector('#previewScale').innerHTML = renderReport();
+  applyPreviewScale();
+}
+
+function applyPreviewScale() {
+  const preview = document.querySelector('#previewScale');
+  const wrap = document.querySelector('.preview-wrap');
+  if (!preview || !wrap) return;
+  const styles = getComputedStyle(wrap);
+  const horizontalPadding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+  const availableWidth = Math.max(280, Math.min(wrap.clientWidth - horizontalPadding, viewportWidth - 32));
+  const mobileBuffer = viewportWidth < 720 ? 0.78 : 1;
+  const scale = Math.min(1, (availableWidth / 794) * mobileBuffer);
+  preview.style.setProperty('--preview-scale', scale.toFixed(4));
 }
 
 function bindEvents() {
@@ -450,3 +504,4 @@ async function downloadPdf() {
 }
 
 render();
+window.addEventListener('resize', applyPreviewScale);
