@@ -32,6 +32,7 @@ const state = {
   consoCurve: [...consoCurve],
   pvCurveOverridden: false,
   photo: '',
+  photoMode: 'landscape',
   consultant: 'VOTRE EXPERT PHOTOVOLTAÏQUE',
   phone: '0648042171',
   email: 'habitontoit@gmail.com'
@@ -315,7 +316,7 @@ function renderReport() {
           <div class="photo-box ${state.photo ? 'has-photo' : ''}">
             ${
               state.photo
-                ? `<img src="${state.photo}" alt="Maison du client" />`
+                ? `<div class="uploaded-photo ${state.photoMode}"><img class="photo-bg" src="${state.photo}" alt="" /><img class="photo-main" src="${state.photo}" alt="Maison du client" /></div>`
                 : `<div class="house-scene" aria-hidden="true">
                     <i class="scene-sun"></i>
                     <i class="roof"></i>
@@ -572,8 +573,13 @@ function bindEvents() {
     if (!file) return;
     const reader = new FileReader();
     reader.addEventListener('load', () => {
-      state.photo = reader.result;
-      renderPreview();
+      const image = new Image();
+      image.addEventListener('load', () => {
+        state.photo = reader.result;
+        state.photoMode = image.naturalHeight > image.naturalWidth ? 'portrait' : 'landscape';
+        renderPreview();
+      });
+      image.src = reader.result;
     });
     reader.readAsDataURL(file);
   });
