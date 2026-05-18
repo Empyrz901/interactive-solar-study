@@ -31,7 +31,7 @@ const state = {
   pvCurve: [...pvCurve],
   consoCurve: [...consoCurve],
   photo: '',
-  consultant: 'HABITONTOIT',
+  consultant: 'VOTRE EXPERT PHOTOVOLTAÏQUE',
   phone: '0648042171',
   email: 'habitontoit@gmail.com'
 };
