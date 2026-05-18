@@ -1099,14 +1099,6 @@ summary {
     padding: 16px;
   }
 
-  .preview-wrap {
-    order: -1;
-  }
-
-  .controls {
-    order: 0;
-  }
-
   .controls-head,
   .form-grid,
   .checks,
