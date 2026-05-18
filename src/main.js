@@ -17,7 +17,7 @@ const state = {
   panels: 12,
   panelWc: 500,
   inverter: 'Micro-onduleurs',
-  orientation: '180',
+  orientation: 'Est / Ouest',
   tilt: '30',
   installType: 'Surimposition toiture',
   price: 15900,
@@ -184,12 +184,41 @@ function renderDonut() {
   const selfUse = Math.max(0, Math.min(100, Number(state.selfUse) || 0));
   const sold = 100 - selfUse;
   return `
-    <div class="donut" style="--p:${selfUse}">
-      <div><strong>Production</strong><b>100%</b></div>
-    </div>
+    <canvas class="donut" width="140" height="140" data-self="${selfUse}" aria-label="Répartition de la production"></canvas>
     <p><strong>Autoconsommée</strong> ${selfUse}%</p>
     <p><strong>Revendue</strong> ${sold}%</p>
   `;
+}
+
+function drawDonuts() {
+  document.querySelectorAll('.donut').forEach((canvas) => {
+    const ctx = canvas.getContext('2d');
+    const selfUse = Number(canvas.dataset.self || 0);
+    const center = 70;
+    const radius = 44;
+    const lineWidth = 28;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = '#f5a20a';
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#29b263';
+    ctx.beginPath();
+    ctx.arc(center, center, radius, -Math.PI / 2, -Math.PI / 2 + (selfUse / 100) * Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(center, center, 27, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0d2e4b';
+    ctx.textAlign = 'center';
+    ctx.font = '700 10px Arial';
+    ctx.fillText('Production', center, 66);
+    ctx.font = '900 18px Arial';
+    ctx.fillText('100%', center, 86);
+  });
 }
 
 function renderReport() {
@@ -251,7 +280,7 @@ function renderReport() {
             <div><span>NB PANNEAUX</span><strong>${textValue(state.panels)}</strong><small>× ${formatNumber(state.panelWc)} Wc</small></div>
             <div><span>PUISSANCE</span><strong>${kwc()} kWc</strong><small>totale installée</small></div>
             <div><span>ONDULEUR</span><strong>${textValue(state.inverter)}</strong><small>type / marque</small></div>
-            <div><span>ORIENTATION</span><strong>${textValue(state.orientation)}°</strong><small>${textValue(state.tilt)}° d'inclinaison</small></div>
+            <div><span>ORIENTATION</span><strong>${textValue(state.orientation)}</strong><small>${textValue(state.tilt)}° d'inclinaison</small></div>
           </div>
           <p>Type de pose : ${textValue(state.installType)}</p>
         </div>
@@ -362,7 +391,7 @@ function renderControls() {
           ${input('Nombre de panneaux', 'panels', 'number', 'min="1"')}
           ${input('Puissance panneau (Wc)', 'panelWc', 'number', 'min="1"')}
           ${input('Onduleur', 'inverter')}
-          ${input('Orientation (degrés)', 'orientation', 'number')}
+          ${input('Orientation', 'orientation')}
           ${input('Inclinaison (degrés)', 'tilt', 'number')}
           ${input('Type de pose', 'installType')}
         </div>
@@ -418,11 +447,13 @@ function render() {
   `;
   bindEvents();
   applyPreviewScale();
+  drawDonuts();
 }
 
 function renderPreview() {
   document.querySelector('#previewScale').innerHTML = renderReport();
   applyPreviewScale();
+  drawDonuts();
 }
 
 function applyPreviewScale() {
@@ -485,6 +516,8 @@ async function downloadPdf() {
   report.classList.add('exporting');
 
   try {
+    drawDonuts();
+    await waitForImages(report);
     const canvas = await html2canvas(report, {
       scale: 2,
       backgroundColor: '#ffffff',
@@ -501,6 +534,19 @@ async function downloadPdf() {
     button.disabled = false;
     button.textContent = 'Générer le PDF';
   }
+}
+
+function waitForImages(root) {
+  const pending = [...root.querySelectorAll('img')].filter((image) => !image.complete);
+  return Promise.all(
+    pending.map(
+      (image) =>
+        new Promise((resolve) => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+        })
+    )
+  );
 }
 
 render();

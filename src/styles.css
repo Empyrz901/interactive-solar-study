@@ -737,7 +737,7 @@ summary {
 
 .annual {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(145px, 1fr) auto;
   align-items: center;
   gap: 12px;
   margin: 4px 0 0;
@@ -752,6 +752,7 @@ summary {
   margin-left: 0;
   text-align: center;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .annual span {
@@ -781,38 +782,10 @@ summary {
 }
 
 .donut {
-  --p: 42;
   width: 112px;
   height: 112px;
-  display: grid;
-  place-items: center;
   margin: 12px auto 14px;
-  border-radius: 50%;
-  background: conic-gradient(#29b263 calc(var(--p) * 1%), #f5a20a 0);
-}
-
-.donut::before {
-  content: "";
-  position: absolute;
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  background: #fff;
-}
-
-.donut div {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 4px;
-}
-
-.donut strong {
-  font-size: 10px;
-}
-
-.donut b {
-  font-size: 17px;
+  display: block;
 }
 
 .split-panel p {
@@ -830,13 +803,13 @@ summary {
 
 .line {
   grid-template-columns: 1fr auto auto;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   font-size: 11px;
 }
 
 .savings-panel .line {
-  min-height: 27px;
-  padding: 6px 8px;
+  min-height: 24px;
+  padding: 5px 8px;
   border: 1px solid #29b263;
   border-radius: 4px;
   background: #fff;
@@ -847,7 +820,7 @@ summary {
 }
 
 .line strong {
-  font-size: 17px;
+  font-size: 16px;
 }
 
 .line small {
@@ -870,13 +843,11 @@ summary {
 }
 
 .total {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 16px;
+  min-height: 48px;
+  margin-top: 8px;
   display: grid;
   gap: 4px;
-  padding: 12px;
+  padding: 8px 12px;
   border-radius: 6px;
   background: #29b263;
   color: #fff;
@@ -885,7 +856,7 @@ summary {
 
 .total strong {
   justify-self: end;
-  font-size: 26px;
+  font-size: 23px;
 }
 
 .total small {
@@ -893,17 +864,15 @@ summary {
 }
 
 .roi {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 10px;
+  min-height: 50px;
+  margin-top: 6px;
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: end;
   gap: 10px;
   border-top: 0;
   border-radius: 6px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   background: #0d2e4b;
   color: #fff;
 }
@@ -915,7 +884,7 @@ summary {
 }
 
 .roi strong {
-  font-size: 27px;
+  font-size: 24px;
   line-height: 1;
 }
 
