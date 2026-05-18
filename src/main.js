@@ -54,6 +54,14 @@ const equipmentOptions = [
   'Pompe à chaleur'
 ];
 
+const equipmentConsumptionKwh = {
+  'Cumulus / ECS': 1200,
+  Climatisation: 600,
+  Piscine: 1200,
+  'Voiture électrique': 2500,
+  'Pompe à chaleur': 2200
+};
+
 function formatNumber(value) {
   const number = Number(value) || 0;
   return new Intl.NumberFormat('fr-FR').format(Math.round(number));
@@ -65,6 +73,14 @@ function kwc() {
 
 function annualProduction() {
   return state.pvCurve.reduce((sum, value) => sum + Number(value || 0), 0);
+}
+
+function equipmentConsumption() {
+  return state.equipments.reduce((sum, item) => sum + (equipmentConsumptionKwh[item] || 0), 0);
+}
+
+function adjustedConsumption() {
+  return Number(state.consumption || 0) + equipmentConsumption();
 }
 
 function selfUseRate() {
@@ -88,7 +104,7 @@ function resaleGain() {
 }
 
 function coverageRate() {
-  const consumption = Number(state.consumption || 0);
+  const consumption = adjustedConsumption();
   if (!consumption) return 0;
   return Math.min(100, Math.round((selfConsumedKwh() / consumption) * 100));
 }
@@ -317,7 +333,7 @@ function renderReport() {
         <div class="panel home-panel">
           ${sectionNumber(2, 'LE FOYER')}
           <dl class="facts">
-            <div><dt>Conso/an :</dt><dd>${formatNumber(state.consumption)} kWh</dd></div>
+            <div><dt>Conso/an :</dt><dd>${formatNumber(adjustedConsumption())} kWh</dd></div>
             <div><dt>Chauffage :</dt><dd>${textValue(state.heating)}</dd></div>
             <div><dt>Occupants :</dt><dd>${textValue(state.occupants)}</dd></div>
           </dl>
