@@ -31,9 +31,9 @@ const state = {
   pvCurve: [...pvCurve],
   consoCurve: [...consoCurve],
   photo: '',
-  consultant: 'VOTRE EXPERT PHOTOVOLTAÏQUE',
-  phone: '06 40 20 25 89',
-  email: 'contact@exemple.fr'
+  consultant: 'HABITONTOIT',
+  phone: '0648042171',
+  email: 'habitontoit@gmail.com'
 };
 
 const equipmentOptions = [
@@ -185,8 +185,8 @@ function renderDonut() {
   const sold = 100 - selfUse;
   return `
     <canvas class="donut" width="140" height="140" data-self="${selfUse}" aria-label="Répartition de la production"></canvas>
-    <p><strong>Autoconsommée</strong> ${selfUse}%</p>
-    <p><strong>Revendue</strong> ${sold}%</p>
+    <p class="self-used"><strong>Autoconsommé</strong> ${selfUse}%</p>
+    <p class="exported-surplus"><strong>Surplus exporté</strong> ${sold}%</p>
   `;
 }
 
@@ -288,7 +288,7 @@ function renderReport() {
 
       <section class="middle-grid">
         <div class="panel production-panel">
-          <div class="title-row">${sectionNumber(4, 'PRODUCTION ANNUELLE (ILLUSTRATION)')}<em>Courbe type — à personnaliser</em></div>
+          <div class="title-row">${sectionNumber(4, 'PRODUCTION ANNUELLE')}</div>
           ${renderChart()}
           <p class="annual"><strong>PRODUCTION ANNUELLE ESTIMÉE :</strong> <b>${formatNumber(production)} kWh/an</b> <span>Orientation</span></p>
         </div>
@@ -304,7 +304,7 @@ function renderReport() {
         <div class="panel savings-panel">
           ${sectionNumber(6, 'VOS ÉCONOMIES')}
           <div class="line"><span>Baisse facture</span><strong>${money(state.billSaving)}</strong><small>/ an</small></div>
-          <div class="line"><span>Revente surplus</span><strong>${money(state.resale)}</strong><small>/ an</small></div>
+          <div class="line"><span>Surplus exporté</span><strong>${money(state.resale)}</strong><small>/ an</small></div>
           <div class="total"><span>GAIN ANNUEL TOTAL</span><strong>${money(totalGain())}</strong><small>économies + revente</small></div>
         </div>
 
@@ -317,7 +317,7 @@ function renderReport() {
         </div>
 
         <div class="panel projection-panel">
-          ${sectionNumber(8, 'PROJECTION LONG TERME')}
+          ${sectionNumber(8, 'ÉCONOMIE RÉALISÉE')}
           <div class="projection-line"><span>Sur 10 ans</span><strong>${money(totalGain() * 10)}</strong></div>
           <div class="projection-line"><span>Sur 15 ans</span><strong>${money(totalGain() * 15)}</strong></div>
           <div class="projection-line"><span>Sur 20 ans</span><strong>${money(totalGain() * 20)}</strong></div>
@@ -346,7 +346,7 @@ function renderReport() {
       </section>
 
       <footer class="report-footer">
-        <span>Document non contractuel — Étude personnalisée</span>
+        <span>Document non contractuel — HABITONTOIT 3 rue du Champenatre 25770 Serre-Les-Sapins</span>
         <strong>${state.consultant}</strong>
         <span>${state.phone} · ${state.email}</span>
       </footer>
@@ -405,7 +405,7 @@ function renderControls() {
         <summary>Économies</summary>
         <div class="form-grid">
           ${input('Baisse facture annuelle (€)', 'billSaving', 'number', 'min="0"')}
-          ${input('Revente surplus annuelle (€)', 'resale', 'number', 'min="0"')}
+          ${input('Surplus exporté annuel (€)', 'resale', 'number', 'min="0"')}
           ${input('Prix TTC (€)', 'price', 'number', 'min="0"')}
           ${input('Aides déduites (€)', 'grants', 'number', 'min="0"')}
           ${input('Autoconsommée (%)', 'selfUse', 'number', 'min="0" max="100"')}

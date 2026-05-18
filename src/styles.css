@@ -770,7 +770,7 @@ summary {
   margin: 12px 0 0;
   padding: 6px;
   border-radius: 4px;
-  background: #0d2e4b;
+  background: #f5a20a;
   color: #fff;
   text-align: center;
 }
@@ -793,6 +793,14 @@ summary {
   justify-content: space-between;
   margin: 0 0 12px;
   font-size: 10px;
+}
+
+.split-panel .self-used strong {
+  color: #238b57;
+}
+
+.split-panel .exported-surplus strong {
+  color: #f5a20a;
 }
 
 .savings-panel,
@@ -1019,7 +1027,7 @@ summary {
   right: 22px;
   bottom: 10px;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1.7fr auto 1fr;
   gap: 10px;
   align-items: center;
   font-size: 9px;
