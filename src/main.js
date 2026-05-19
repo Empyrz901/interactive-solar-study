@@ -344,9 +344,10 @@ function detectAnnualValue(text, monthlyValues) {
 }
 
 async function extractPdfText(file) {
-  const pdfjs = await import(/* @vite-ignore */ 'https://esm.sh/pdfjs-dist@4.10.38');
+  const pdfjs = await import(/* @vite-ignore */ 'https://esm.sh/pdfjs-dist@4.10.38/build/pdf.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
   const data = new Uint8Array(await file.arrayBuffer());
-  const documentTask = pdfjs.getDocument({ data, disableWorker: true });
+  const documentTask = pdfjs.getDocument({ data });
   const pdf = await documentTask.promise;
   const pages = [];
 
@@ -365,13 +366,17 @@ async function extractSpreadsheetText(file) {
   return workbook.SheetNames.map((sheetName) => XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName])).join('\n');
 }
 
+async function extractImageText(file) {
+  const Tesseract = await import(/* @vite-ignore */ 'https://esm.sh/tesseract.js@5.1.1');
+  const result = await Tesseract.recognize(file, 'fra+eng');
+  return result.data.text;
+}
+
 async function extractFileText(file) {
   const extension = file.name.split('.').pop()?.toLowerCase();
   if (file.type === 'application/pdf' || extension === 'pdf') return extractPdfText(file);
   if (['xlsx', 'xls'].includes(extension)) return extractSpreadsheetText(file);
-  if (file.type.startsWith('image/')) {
-    throw new Error("Import image non exploitable automatiquement sans OCR fiable. Utilisez de préférence un PDF texte, CSV ou Excel, puis ajustez manuellement si besoin.");
-  }
+  if (file.type.startsWith('image/') || ['jpg', 'jpeg', 'png'].includes(extension)) return extractImageText(file);
   return file.text();
 }
 
@@ -382,14 +387,14 @@ async function importMonthlyFile(file, key) {
     const text = await extractFileText(file);
     const monthlyValues = extractMonthlyValues(text);
     if (!monthlyValues) {
-      throw new Error('Aucune série mensuelle complète Janvier-Décembre détectée dans ce fichier.');
+      throw new Error('Extraction impossible, veuillez vérifier le fichier ou saisir les données manuellement.');
     }
 
     state[key] = monthlyValues;
     state.importMessage = `${key === 'pvCurve' ? 'Production PVGIS' : 'Consommation'} importée : ${formatNumber(detectAnnualValue(text, monthlyValues))} kWh/an.`;
     render();
   } catch (error) {
-    state.importMessage = error.message || "Import impossible pour ce fichier.";
+    state.importMessage = error.message || 'Extraction impossible, veuillez vérifier le fichier ou saisir les données manuellement.';
     render();
   }
 }
@@ -488,6 +493,26 @@ function renderDonut() {
     <canvas class="donut" width="140" height="140" data-self="${selfUse}" aria-label="Répartition de la production"></canvas>
     <p class="self-used"><strong>Autoconsommé</strong> ${selfUse}% <small>${formatNumber(scenario.selfConsumed)} kWh</small></p>
     <p class="exported-surplus"><strong>Surplus injecté</strong> ${sold}% <small>${formatNumber(scenario.surplus)} kWh</small></p>
+  `;
+}
+
+function verificationTable() {
+  return `
+    <div class="verification-table">
+      <h4>Tableau de vérification avant génération PDF</h4>
+      <div class="verification-head"><span>Mois</span><span>Consommation</span><span>Production</span></div>
+      ${monthNames
+        .map(
+          (month, index) => `
+            <div class="verification-row">
+              <span>${month}</span>
+              <input name="consoCurve:${index}" type="number" min="0" value="${state.consoCurve[index]}" />
+              <input name="pvCurve:${index}" type="number" min="0" value="${state.pvCurve[index]}" />
+            </div>
+          `
+        )
+        .join('')}
+    </div>
   `;
 }
 
@@ -603,7 +628,7 @@ function renderReport() {
           <div class="title-row">${sectionNumber(4, 'PRODUCTION ANNUELLE')}</div>
           ${renderChart()}
           <div class="annual annual-summary">
-            <div class="annual-row production-total"><strong>Production annuelle PVGIS :</strong><b>${formatNumber(production)} kWh/an</b></div>
+            <div class="annual-row production-total"><strong>Production annuelle :</strong><b>${formatNumber(production)} kWh/an</b></div>
             <div class="annual-row consumption-total"><strong>Consommation annuelle :</strong><b>${formatNumber(adjustedConsumption())} kWh/an</b></div>
           </div>
         </div>
@@ -620,19 +645,19 @@ function renderReport() {
           ${sectionNumber(6, 'VOS ÉCONOMIES')}
           <div class="annual-gain">
             <span>GAIN ANNUEL TOTAL</span>
-            <strong>${money(withoutBattery.totalGain)}</strong>
+            <strong>${money(withoutBattery.totalGain)} <em>/ an</em></strong>
             <small>baisse de facture + revente surplus</small>
           </div>
           <div class="saving-split">
-            <div><span>Baisse facture</span><strong>${money(saving)}</strong><small>${Number(state.electricityRate || 0).toString().replace('.', ',')} €/kWh</small></div>
-            <div><span>Revente surplus</span><strong>${money(resale)}</strong><small>${Number(state.exportRate || 0).toString().replace('.', ',')} €/kWh</small></div>
+            <div><span>Baisse facture</span><strong>${money(saving)} <em>/ an</em></strong><small>${Number(state.electricityRate || 0).toString().replace('.', ',')} €/kWh</small></div>
+            <div><span>Surplus injecté</span><strong>${money(resale)} <em>/ an</em></strong><small>${Number(state.exportRate || 0).toString().replace('.', ',')} €/kWh</small></div>
           </div>
         </div>
 
         <div class="panel cost-panel">
           ${sectionNumber(7, 'COÛT & RENTABILITÉ')}
           <div class="project-cost"><span>Coût total du projet</span><strong>${money(state.price)}</strong></div>
-          <div class="roi"><span>RETOUR SUR INVESTISSEMENT</span><strong>${roiYears(withoutBattery.totalGain, Number(state.price || 0))} ans</strong><small>Calculé sur le prix TTC<br />et le gain annuel</small></div>
+          <div class="roi"><span>RETOUR SUR INVESTISSEMENT</span><strong>${roiYears(withoutBattery.totalGain, Number(state.price || 0))} ans</strong><small>Estimation basée sur le gain annuel</small></div>
         </div>
 
         <div class="panel projection-panel">
@@ -755,16 +780,15 @@ function renderControls() {
       <details open>
         <summary>Import automatique des données</summary>
         <div class="form-grid">
-          ${importControl('Importer production PVGIS', 'pvCurve', '.pdf,.csv,.txt,.xlsx,.xls')}
-          ${importControl('Importer consommation client', 'consoCurve', '.pdf,.csv,.txt,.xlsx,.xls,image/*')}
+          ${importControl('Importer production PVGIS', 'pvCurve', '.pdf,.csv,.txt,.xlsx,.xls,.jpg,.jpeg,.png,image/*')}
+          ${importControl('Importer consommation client', 'consoCurve', '.pdf,.csv,.txt,.xlsx,.xls,.jpg,.jpeg,.png,image/*')}
         </div>
         ${state.importMessage ? `<p class="import-message">${state.importMessage}</p>` : ''}
       </details>
 
       <details open>
-        <summary>Données mensuelles obligatoires</summary>
-        ${curveInputs('Consommation client (kWh)', 'consoCurve')}
-        ${curveInputs('Production PVGIS (kWh)', 'pvCurve')}
+        <summary>Vérification des données mensuelles</summary>
+        ${verificationTable()}
       </details>
 
       <details>
