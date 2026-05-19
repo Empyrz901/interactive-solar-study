@@ -135,6 +135,22 @@ summary {
   padding: 0 16px 16px;
 }
 
+.import-field input {
+  padding: 7px;
+  font-size: 12px;
+}
+
+.import-message {
+  margin: -4px 16px 16px;
+  padding: 8px 10px;
+  border-left: 4px solid #2383c4;
+  border-radius: 4px;
+  background: #eef6fc;
+  color: #0d2e4b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .checks {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -821,7 +837,7 @@ summary {
 .coverage {
   position: static;
   margin: 12px 0 0;
-  padding: 6px;
+  padding: 8px;
   border-radius: 4px;
   background: #0d2e4b;
   color: #fff;
@@ -834,8 +850,18 @@ summary {
 
 .coverage b {
   margin-top: 3px;
+  display: block;
   font-size: 15px;
   font-weight: 900;
+}
+
+.coverage small {
+  display: block;
+  max-width: 180px;
+  margin: 4px auto 0;
+  color: #d9e8f3;
+  font-size: 7.5px;
+  line-height: 1.2;
 }
 
 .donut {
@@ -890,6 +916,62 @@ summary {
   border-color: #f5a20a;
 }
 
+.annual-gain {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 9px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #29b263;
+  color: #fff;
+}
+
+.annual-gain span {
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.annual-gain strong {
+  justify-self: end;
+  font-size: 29px;
+  line-height: 1;
+}
+
+.annual-gain small {
+  color: #ddf8e7;
+  font-size: 8px;
+}
+
+.saving-split {
+  display: grid;
+  gap: 7px;
+}
+
+.saving-split div {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: baseline;
+  min-height: 24px;
+  padding: 5px 8px;
+  border: 1px solid #29b263;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 10px;
+}
+
+.saving-split div:nth-child(2) {
+  border-color: #f5a20a;
+}
+
+.saving-split strong {
+  font-size: 14px;
+}
+
+.saving-split small {
+  font-size: 7.5px;
+}
+
 .line strong {
   font-size: 16px;
 }
@@ -911,6 +993,27 @@ summary {
 
 .cost-panel .line.strong {
   padding-top: 8px;
+}
+
+.project-cost {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #edf6fd;
+  color: #0d2e4b;
+}
+
+.project-cost span {
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.project-cost strong {
+  justify-self: end;
+  font-size: 24px;
+  line-height: 1;
 }
 
 .total {
@@ -992,6 +1095,57 @@ summary {
   margin-left: 6px;
   color: #667085;
   font-size: 8px;
+}
+
+.projection-table {
+  display: grid;
+  gap: 8px;
+}
+
+.projection-head,
+.projection-row {
+  display: grid;
+  grid-template-columns: 58px 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.projection-head {
+  color: #465164;
+  font-size: 8px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.projection-row {
+  min-height: 40px;
+  padding: 7px;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.projection-row span {
+  color: #0d2e4b;
+}
+
+.projection-row strong {
+  padding: 6px 8px;
+  border-radius: 4px;
+  text-align: right;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.projection-row .without-battery {
+  background: #eef6fc;
+  color: #2383c4;
+}
+
+.projection-row .with-battery {
+  background: #e8f8ee;
+  color: #238b57;
 }
 
 .battery-panel {

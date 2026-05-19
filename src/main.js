@@ -13,6 +13,11 @@ const loadProfiles = {
   standard: 'Standard résidentiel',
   ev: 'Avec voiture électrique'
 };
+const rechargeProfiles = {
+  night: 'De nuit',
+  day: 'En journée',
+  mixed: 'Mixte'
+};
 
 const state = {
   clientName: '',
@@ -25,18 +30,23 @@ const state = {
   panels: 12,
   panelWc: 500,
   inverter: 'Micro-onduleurs',
-  orientation: '',
+  orientation: 'Sud / Ouest',
   tilt: '35',
   installType: 'Surimposition toiture',
   price: 12900,
-  grants: 0,
   electricityRate: defaultElectricityRate,
   exportRate: defaultExportRate,
   batteryCapacity: 10,
   batteryEfficiency: defaultBatteryEfficiency,
   batteryCost: 6900,
+  evKmPerYear: '',
+  evConsumptionPer100: '',
+  evChargeFrequency: '',
+  evChargeMoment: 'night',
+  evChargePower: '',
   pvCurve: buildPvCurve(12, 500),
   consoCurve: buildConsumptionCurve(4990),
+  importMessage: '',
   photo: '',
   photoMode: 'landscape',
   consultant: 'VOTRE EXPERT PHOTOVOLTAÏQUE',
@@ -78,17 +88,39 @@ function annualProduction() {
 }
 
 function adjustedConsumption() {
-  return state.consoCurve.reduce((sum, value) => sum + Number(value || 0), 0);
+  return state.consoCurve.reduce((sum, value) => sum + Number(value || 0), 0) + annualEvConsumption();
 }
 
 function netCost() {
-  return Math.max(0, Number(state.price || 0) - Number(state.grants || 0));
+  return Math.max(0, Number(state.price || 0));
 }
 
 function hourlyConsumptionWeight(hour, profile) {
   const standard = [0.55, 0.48, 0.45, 0.43, 0.45, 0.58, 0.85, 1.05, 0.95, 0.78, 0.68, 0.62, 0.65, 0.68, 0.72, 0.82, 1.05, 1.35, 1.55, 1.45, 1.18, 0.95, 0.78, 0.65];
-  const evBoost = [1.15, 1.1, 1.0, 0.85, 0.7, 0.55, 0.45, 0.35, 0.25, 0.2, 0.2, 0.2, 0.2, 0.25, 0.3, 0.45, 0.7, 1.05, 1.35, 1.55, 1.65, 1.6, 1.45, 1.3];
-  return profile === 'ev' ? standard[hour] * 0.78 + evBoost[hour] * 0.7 : standard[hour];
+  return standard[hour];
+}
+
+function evProfileComplete() {
+  return (
+    state.loadProfile === 'ev' &&
+    Number(state.evKmPerYear || 0) > 0 &&
+    Number(state.evConsumptionPer100 || 0) > 0 &&
+    Number(state.evChargeFrequency || 0) > 0 &&
+    Number(state.evChargePower || 0) > 0
+  );
+}
+
+function annualEvConsumption() {
+  if (!evProfileComplete()) return 0;
+  return (Number(state.evKmPerYear) * Number(state.evConsumptionPer100)) / 100;
+}
+
+function evHourlyWeight(hour) {
+  const night = [1.3, 1.35, 1.25, 1.05, 0.8, 0.45, 0.2, 0.08, 0, 0, 0, 0, 0, 0, 0.05, 0.1, 0.25, 0.45, 0.7, 0.95, 1.15, 1.3, 1.35, 1.35];
+  const day = [0, 0, 0, 0, 0, 0, 0.05, 0.15, 0.35, 0.65, 0.95, 1.15, 1.25, 1.2, 1.05, 0.82, 0.55, 0.3, 0.15, 0.05, 0, 0, 0, 0];
+  const mixed = night.map((value, index) => value * 0.55 + day[index] * 0.45);
+  const selected = state.evChargeMoment === 'day' ? day : state.evChargeMoment === 'mixed' ? mixed : night;
+  return selected[hour];
 }
 
 function hourlyProductionWeight(hour, monthIndex) {
@@ -113,9 +145,19 @@ function distributeMonthlyToHours(monthlyValues, weightForHour) {
 }
 
 function hourlySeries() {
+  const production = distributeMonthlyToHours(state.pvCurve, hourlyProductionWeight);
+  const baseConsumption = distributeMonthlyToHours(state.consoCurve, (hour) => hourlyConsumptionWeight(hour));
+  const evAnnual = annualEvConsumption();
+  const evConsumption = evAnnual
+    ? distributeMonthlyToHours(
+        monthDays.map((days) => (evAnnual * days) / 365),
+        (hour) => evHourlyWeight(hour)
+      )
+    : [];
+
   return {
-    production: distributeMonthlyToHours(state.pvCurve, hourlyProductionWeight),
-    consumption: distributeMonthlyToHours(state.consoCurve, (hour) => hourlyConsumptionWeight(hour, state.loadProfile))
+    production,
+    consumption: baseConsumption.map((value, index) => value + (evConsumption[index] || 0))
   };
 }
 
@@ -241,6 +283,115 @@ function select(label, key, options) {
       </select>
     </label>
   `;
+}
+
+function importControl(label, key, accept) {
+  return `
+    <label class="field import-field">
+      <span>${label}</span>
+      <input type="file" data-import="${key}" accept="${accept}" />
+    </label>
+  `;
+}
+
+function normalizeText(value) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function numericValue(value) {
+  return Number(String(value).replace(/\s/g, '').replace(',', '.')) || 0;
+}
+
+function extractMonthlyValues(text) {
+  const normalized = normalizeText(text);
+  const monthPatterns = [
+    'janvier|janv\\.?|january|jan\\.?',
+    'fevrier|fevr\\.?|february|feb\\.?',
+    'mars|march|mar\\.?',
+    'avril|avr\\.?|april|apr\\.?',
+    'mai|may',
+    'juin|june|jun\\.?',
+    'juillet|july|jul\\.?',
+    'aout|august|aug\\.?',
+    'septembre|sept\\.?|september|sep\\.?',
+    'octobre|oct\\.?|october',
+    'novembre|nov\\.?|november',
+    'decembre|dec\\.?|december'
+  ];
+  const fromLabels = monthPatterns.map((pattern) => {
+    const match = normalized.match(new RegExp(`(?:${pattern})[^0-9]{0,40}([0-9][0-9\\s.,]*)`, 'i'));
+    return match ? Math.round(numericValue(match[1])) : null;
+  });
+  if (fromLabels.every((value) => value !== null && Number(value) >= 0)) return fromLabels;
+
+  const numbers = normalized
+    .match(/[0-9]+(?:[\s.,][0-9]+)?/g)
+    ?.map(numericValue)
+    .filter((value) => value > 0 && value < 20000);
+
+  if (!numbers || numbers.length < 12) return null;
+  return numbers.slice(0, 12).map((value) => Math.round(value));
+}
+
+function detectAnnualValue(text, monthlyValues) {
+  const normalized = normalizeText(text);
+  const labeledAnnual = normalized.match(/(?:annuel|annual|total)[^0-9]{0,50}([0-9][0-9\s.,]*)/i);
+  if (labeledAnnual) return Math.round(numericValue(labeledAnnual[1]));
+  return monthlyValues.reduce((sum, value) => sum + Number(value || 0), 0);
+}
+
+async function extractPdfText(file) {
+  const pdfjs = await import(/* @vite-ignore */ 'https://esm.sh/pdfjs-dist@4.10.38');
+  const data = new Uint8Array(await file.arrayBuffer());
+  const documentTask = pdfjs.getDocument({ data, disableWorker: true });
+  const pdf = await documentTask.promise;
+  const pages = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item) => item.str).join(' '));
+  }
+
+  return pages.join('\n');
+}
+
+async function extractSpreadsheetText(file) {
+  const XLSX = await import(/* @vite-ignore */ 'https://esm.sh/xlsx@0.18.5');
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  return workbook.SheetNames.map((sheetName) => XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName])).join('\n');
+}
+
+async function extractFileText(file) {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (file.type === 'application/pdf' || extension === 'pdf') return extractPdfText(file);
+  if (['xlsx', 'xls'].includes(extension)) return extractSpreadsheetText(file);
+  if (file.type.startsWith('image/')) {
+    throw new Error("Import image non exploitable automatiquement sans OCR fiable. Utilisez de préférence un PDF texte, CSV ou Excel, puis ajustez manuellement si besoin.");
+  }
+  return file.text();
+}
+
+async function importMonthlyFile(file, key) {
+  try {
+    state.importMessage = 'Lecture du fichier en cours...';
+    renderPreview();
+    const text = await extractFileText(file);
+    const monthlyValues = extractMonthlyValues(text);
+    if (!monthlyValues) {
+      throw new Error('Aucune série mensuelle complète Janvier-Décembre détectée dans ce fichier.');
+    }
+
+    state[key] = monthlyValues;
+    state.importMessage = `${key === 'pvCurve' ? 'Production PVGIS' : 'Consommation'} importée : ${formatNumber(detectAnnualValue(text, monthlyValues))} kWh/an.`;
+    render();
+  } catch (error) {
+    state.importMessage = error.message || "Import impossible pour ce fichier.";
+    render();
+  }
 }
 
 function sectionNumber(number, title) {
@@ -459,7 +610,7 @@ function renderReport() {
 
         <div class="panel split-panel">
           ${sectionNumber(5, 'RÉPARTITION')}
-          <div class="coverage"><strong>COUVERTURE</strong><b>${coverage} %</b></div>
+          <div class="coverage"><strong>AUTONOMIE ÉNERGÉTIQUE</strong><b>${coverage} %</b><small>Part de votre consommation couverte par votre production solaire</small></div>
           ${renderDonut()}
         </div>
       </section>
@@ -467,24 +618,39 @@ function renderReport() {
       <section class="economy-grid">
         <div class="panel savings-panel">
           ${sectionNumber(6, 'VOS ÉCONOMIES')}
-          <div class="line"><span>Baisse facture</span><strong>${money(saving)}</strong><small>${Number(state.electricityRate || 0).toString().replace('.', ',')} €/kWh</small></div>
-          <div class="line"><span>Surplus injecté</span><strong>${money(resale)}</strong><small>${Number(state.exportRate || 0).toString().replace('.', ',')} €/kWh</small></div>
-          <div class="total"><span>GAIN ANNUEL TOTAL</span><strong>${money(totalGain())}</strong><small>économies + revente</small></div>
+          <div class="annual-gain">
+            <span>GAIN ANNUEL TOTAL</span>
+            <strong>${money(withoutBattery.totalGain)}</strong>
+            <small>baisse de facture + revente surplus</small>
+          </div>
+          <div class="saving-split">
+            <div><span>Baisse facture</span><strong>${money(saving)}</strong><small>${Number(state.electricityRate || 0).toString().replace('.', ',')} €/kWh</small></div>
+            <div><span>Revente surplus</span><strong>${money(resale)}</strong><small>${Number(state.exportRate || 0).toString().replace('.', ',')} €/kWh</small></div>
+          </div>
         </div>
 
         <div class="panel cost-panel">
           ${sectionNumber(7, 'COÛT & RENTABILITÉ')}
-          <div class="line"><span>Prix TTC</span><strong>${money(state.price)}</strong></div>
-          <div class="line"><span>Aides déduites</span><strong>− ${money(state.grants)}</strong></div>
-          <div class="line strong"><span>Reste à charge</span><strong>${money(netCost())}</strong></div>
-          <div class="roi"><span>ROI PROJET SANS BATTERIE</span><strong>${roiYears()} ans</strong><small>Calculé sur gain annuel<br />hors batterie</small></div>
+          <div class="project-cost"><span>Coût total du projet</span><strong>${money(state.price)}</strong></div>
+          <div class="roi"><span>RETOUR SUR INVESTISSEMENT</span><strong>${roiYears(withoutBattery.totalGain, Number(state.price || 0))} ans</strong><small>Calculé sur le prix TTC<br />et le gain annuel</small></div>
         </div>
 
         <div class="panel projection-panel">
           ${sectionNumber(8, 'ÉCONOMIE RÉALISÉE')}
-          <div class="projection-line"><span>Sur 10 ans</span><strong>${money(withoutBattery.totalGain * 10)} / ${money(withBattery.totalGain * 10)}</strong><small>S / B</small></div>
-          <div class="projection-line"><span>Sur 15 ans</span><strong>${money(withoutBattery.totalGain * 15)} / ${money(withBattery.totalGain * 15)}</strong><small>S / B</small></div>
-          <div class="projection-line"><span>Sur 20 ans</span><strong>${money(withoutBattery.totalGain * 20)} / ${money(withBattery.totalGain * 20)}</strong><small>S / B</small></div>
+          <div class="projection-table">
+            <div class="projection-head"><span></span><strong>Sans batterie</strong><strong>Avec batterie</strong></div>
+            ${[10, 15, 20]
+              .map(
+                (years) => `
+                  <div class="projection-row">
+                    <span>${years} ans</span>
+                    <strong class="without-battery">${money(withoutBattery.totalGain * years)}</strong>
+                    <strong class="with-battery">${money(withBattery.totalGain * years)}</strong>
+                  </div>
+                `
+              )
+              .join('')}
+          </div>
         </div>
       </section>
 
@@ -494,12 +660,12 @@ function renderReport() {
           <div>
             <h3>SANS BATTERIE</h3>
             <p>Simulation horaire directe</p>
-            <dl><div><dt>Autoconsommation</dt><dd>${withoutBattery.selfUsePercent} %</dd></div><div><dt>Couverture conso</dt><dd>${withoutBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withoutBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(withoutBattery.totalGain)}</dd></div></dl>
+            <dl><div><dt>Autoconsommation</dt><dd>${withoutBattery.selfUsePercent} %</dd></div><div><dt>Autonomie conso</dt><dd>${withoutBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withoutBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(withoutBattery.totalGain)}</dd></div></dl>
           </div>
           <div>
             <h3>AVEC BATTERIE</h3>
             <p>Stockage ${formatDecimal(state.batteryCapacity)} kWh, rendement ${Math.round(Number(state.batteryEfficiency || 0) * 100)} %</p>
-            <dl><div><dt>Autoconsommation</dt><dd>${batterySelfUsePercent} %</dd></div><div><dt>Couverture conso</dt><dd>${withBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(batteryEconomy)}</dd></div></dl>
+            <dl><div><dt>Autoconsommation</dt><dd>${batterySelfUsePercent} %</dd></div><div><dt>Autonomie conso</dt><dd>${withBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(batteryEconomy)}</dd></div></dl>
           </div>
           <div>
             <h3>DIFFÉRENCE</h3>
@@ -548,6 +714,17 @@ function renderControls() {
         </div>
       </details>
 
+      <details>
+        <summary>Option avancée : voiture électrique</summary>
+        <div class="form-grid">
+          ${input('Kilomètres par an', 'evKmPerYear', 'number', 'min="0"')}
+          ${input('Conso véhicule (kWh/100 km)', 'evConsumptionPer100', 'number', 'min="0" step="0.1"')}
+          ${input('Fréquence recharge (/semaine)', 'evChargeFrequency', 'number', 'min="0" step="0.1"')}
+          ${select('Recharge principalement', 'evChargeMoment', rechargeProfiles)}
+          ${input('Puissance recharge (kW)', 'evChargePower', 'number', 'min="0" step="0.1"')}
+        </div>
+      </details>
+
       <details open>
         <summary>Installation</summary>
         <div class="form-grid">
@@ -568,12 +745,20 @@ function renderControls() {
         <summary>Économies</summary>
         <div class="form-grid">
           ${input('Prix TTC (€)', 'price', 'number', 'min="0"')}
-          ${input('Aides déduites (€)', 'grants', 'number', 'min="0"')}
           ${input('Prix kWh acheté (€)', 'electricityRate', 'number', 'min="0" step="0.001"')}
           ${input('Tarif revente surplus (€)', 'exportRate', 'number', 'min="0" step="0.001"')}
           ${input('Capacité batterie (kWh)', 'batteryCapacity', 'number', 'min="0" step="0.1"')}
           ${input('Surcoût batterie (€)', 'batteryCost', 'number', 'min="0"')}
         </div>
+      </details>
+
+      <details open>
+        <summary>Import automatique des données</summary>
+        <div class="form-grid">
+          ${importControl('Importer production PVGIS', 'pvCurve', '.pdf,.csv,.txt,.xlsx,.xls')}
+          ${importControl('Importer consommation client', 'consoCurve', '.pdf,.csv,.txt,.xlsx,.xls,image/*')}
+        </div>
+        ${state.importMessage ? `<p class="import-message">${state.importMessage}</p>` : ''}
       </details>
 
       <details open>
@@ -644,6 +829,14 @@ function bindEvents() {
     field.addEventListener(field.tagName === 'SELECT' ? 'change' : 'input', (event) => {
       state[event.target.name] = event.target.value;
       renderPreview();
+    });
+  });
+
+  document.querySelectorAll('input[data-import]').forEach((field) => {
+    field.addEventListener('change', (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      importMonthlyFile(file, event.target.dataset.import);
     });
   });
 
