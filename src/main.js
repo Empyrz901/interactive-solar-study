@@ -246,15 +246,6 @@ function roiYears(gain = totalGain(), cost = netCost()) {
   return gain ? Math.max(1, Math.round((cost / gain) * 10) / 10).toString().replace('.', ',') : '...';
 }
 
-function batteryRoi() {
-  const gain = simulation().difference.annualGain;
-  return gain ? Math.max(1, Math.round((Number(state.batteryCost || 0) / gain) * 10) / 10).toString().replace('.', ',') : '...';
-}
-
-function batteryNetDifference(years = 20) {
-  return simulation().difference.annualGain * years - Number(state.batteryCost || 0);
-}
-
 function input(label, key, type = 'text', attrs = '') {
   return `
     <label class="field">
@@ -548,10 +539,8 @@ function renderReport() {
   const coverage = withoutBattery.coverage;
   const saving = withoutBattery.billReduction;
   const resale = withoutBattery.resale;
-  const batteryGain = difference.annualGain;
   const batteryEconomy = withBattery.totalGain;
   const batterySelfUsePercent = withBattery.selfUsePercent;
-  const netBattery20Years = batteryNetDifference(20);
   return `
     <article id="report" class="report" aria-label="Étude photovoltaïque">
       <header class="report-header">
@@ -688,9 +677,9 @@ function renderReport() {
             <dl><div><dt>Autoconsommation</dt><dd>${batterySelfUsePercent} %</dd></div><div><dt>Autonomie conso</dt><dd>${withBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(batteryEconomy)}</dd></div></dl>
           </div>
           <div>
-            <h3>DIFFÉRENCE</h3>
-            <p>Écart net 20 ans : ${money(netBattery20Years)}</p>
-            <dl><div><dt>Gain en plus</dt><dd>${money(batteryGain)}/an</dd></div><div><dt>Achat évité</dt><dd>${formatNumber(difference.gridPurchase)} kWh</dd></div><div><dt>Gain brut 20 ans</dt><dd>${money(batteryGain * 20)}</dd></div><div><dt>ROI batterie</dt><dd>${batteryRoi()} ans</dd></div></dl>
+            <h3>PLUS D’AUTONOMIE</h3>
+            <p>Utilisez davantage votre propre énergie.</p>
+            <dl><div><dt>Autonomie gagnée</dt><dd>+ ${Math.max(0, withBattery.coverage - withoutBattery.coverage)} pts</dd></div><div><dt>Achat réseau évité</dt><dd>${formatNumber(difference.gridPurchase)} kWh</dd></div><div><dt>Dépendance réseau</dt><dd>réduite</dd></div><div><dt>Confort</dt><dd>stockage solaire</dd></div></dl>
           </div>
         </div>
       </section>
