@@ -9,13 +9,14 @@ const consoProfile = [480, 450, 410, 350, 300, 270, 260, 280, 330, 390, 450, 490
 const defaultElectricityRate = 0.194;
 const defaultExportRate = 0.04;
 const defaultBatteryEfficiency = 0.9;
-const loadProfiles = {
-  standard: 'Standard résidentiel',
-  ev: 'Avec voiture électrique'
+const defaultEvConsumptionPer100 = 17;
+const yesNoOptions = {
+  no: 'Non',
+  yes: 'Oui'
 };
 const rechargeProfiles = {
-  night: 'De nuit',
-  day: 'En journée',
+  night: 'Nuit',
+  day: 'Journée',
   mixed: 'Mixte'
 };
 
@@ -26,7 +27,7 @@ const state = {
   reference: '',
   heating: 'Électrique',
   occupants: '4',
-  loadProfile: 'standard',
+  evEnabled: 'no',
   panels: 12,
   panelWc: 500,
   inverter: 'Micro-onduleurs',
@@ -40,10 +41,7 @@ const state = {
   batteryEfficiency: defaultBatteryEfficiency,
   batteryCost: 6900,
   evKmPerYear: '',
-  evConsumptionPer100: '',
-  evChargeFrequency: '',
   evChargeMoment: 'night',
-  evChargePower: '',
   pvCurve: buildPvCurve(12, 500),
   consoCurve: buildConsumptionCurve(4990),
   importMessage: '',
@@ -101,24 +99,18 @@ function hourlyConsumptionWeight(hour, profile) {
 }
 
 function evProfileComplete() {
-  return (
-    state.loadProfile === 'ev' &&
-    Number(state.evKmPerYear || 0) > 0 &&
-    Number(state.evConsumptionPer100 || 0) > 0 &&
-    Number(state.evChargeFrequency || 0) > 0 &&
-    Number(state.evChargePower || 0) > 0
-  );
+  return state.evEnabled === 'yes' && Number(state.evKmPerYear || 0) > 0;
 }
 
 function annualEvConsumption() {
   if (!evProfileComplete()) return 0;
-  return (Number(state.evKmPerYear) * Number(state.evConsumptionPer100)) / 100;
+  return (Number(state.evKmPerYear) * defaultEvConsumptionPer100) / 100;
 }
 
 function evHourlyWeight(hour) {
   const night = [1.3, 1.35, 1.25, 1.05, 0.8, 0.45, 0.2, 0.08, 0, 0, 0, 0, 0, 0, 0.05, 0.1, 0.25, 0.45, 0.7, 0.95, 1.15, 1.3, 1.35, 1.35];
   const day = [0, 0, 0, 0, 0, 0, 0.05, 0.15, 0.35, 0.65, 0.95, 1.15, 1.25, 1.2, 1.05, 0.82, 0.55, 0.3, 0.15, 0.05, 0, 0, 0, 0];
-  const mixed = night.map((value, index) => value * 0.55 + day[index] * 0.45);
+  const mixed = night.map((value, index) => value * 0.5 + day[index] * 0.5);
   const selected = state.evChargeMoment === 'day' ? day : state.evChargeMoment === 'mixed' ? mixed : night;
   return selected[hour];
 }
@@ -608,7 +600,10 @@ function renderReport() {
             <div><dt>Occupants :</dt><dd>${textValue(state.occupants)}</dd></div>
           </dl>
           <h3>PROFIL :</h3>
-          <ul>${Object.entries(loadProfiles).map(([key, label]) => `<li class="${state.loadProfile === key ? 'active' : ''}">${label}</li>`).join('')}</ul>
+          <ul>
+            <li class="active">Standard résidentiel</li>
+            <li class="${evProfileComplete() ? 'active' : ''}">Véhicule électrique ${evProfileComplete() ? `+ ${formatNumber(annualEvConsumption())} kWh/an` : 'non inclus'}</li>
+          </ul>
         </div>
 
         <div class="panel install-panel">
@@ -735,19 +730,17 @@ function renderControls() {
         <div class="form-grid">
           ${input('Chauffage', 'heating')}
           ${input('Occupants', 'occupants', 'number', 'min="1"')}
-          ${select('Profil de consommation', 'loadProfile', loadProfiles)}
         </div>
       </details>
 
-      <details>
-        <summary>Option avancée : voiture électrique</summary>
+      <details open>
+        <summary>Véhicule électrique</summary>
         <div class="form-grid">
-          ${input('Kilomètres par an', 'evKmPerYear', 'number', 'min="0"')}
-          ${input('Conso véhicule (kWh/100 km)', 'evConsumptionPer100', 'number', 'min="0" step="0.1"')}
-          ${input('Fréquence recharge (/semaine)', 'evChargeFrequency', 'number', 'min="0" step="0.1"')}
+          ${select('Véhicule électrique', 'evEnabled', yesNoOptions)}
+          ${input('Kilométrage annuel (km/an)', 'evKmPerYear', 'number', 'min="0"')}
           ${select('Recharge principalement', 'evChargeMoment', rechargeProfiles)}
-          ${input('Puissance recharge (kW)', 'evChargePower', 'number', 'min="0" step="0.1"')}
         </div>
+        <p class="ev-note">Consommation moyenne utilisée automatiquement : ${defaultEvConsumptionPer100} kWh/100 km.</p>
       </details>
 
       <details open>
