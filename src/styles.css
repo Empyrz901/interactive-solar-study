@@ -711,8 +711,8 @@ summary {
 .pv-dot,
 .pv-line,
 .pv-points circle {
-  background: #f5a20a;
-  color: #f5a20a;
+  background: #d92d20;
+  color: #d92d20;
 }
 
 .use-dot,
@@ -761,11 +761,11 @@ summary {
 }
 
 .pv-line {
-  stroke: #f5a20a;
+  stroke: #d92d20;
 }
 
 .pv-points circle {
-  fill: #f5a20a;
+  fill: #d92d20;
   stroke: #fff;
   stroke-width: 2;
 }
