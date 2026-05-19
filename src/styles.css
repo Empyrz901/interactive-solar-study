@@ -834,6 +834,12 @@ summary {
   font-size: 10px;
 }
 
+.split-panel p small {
+  margin-left: 4px;
+  color: #667085;
+  font-size: 8px;
+}
+
 .split-panel .self-used strong {
   color: #238b57;
 }

@@ -3,34 +3,38 @@ import { jsPDF } from 'jspdf';
 
 const months = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 const pvProfile = [270, 380, 580, 740, 890, 980, 950, 850, 670, 470, 310, 240];
-const consoCurve = [480, 450, 410, 350, 300, 270, 260, 280, 330, 390, 450, 490];
-const defaultAnnualYieldPerKwc = 1220;
-const defaultElectricityRate = 0.18;
-const defaultExportRate = 0.13;
-const batterySelfUseGain = 0.34;
+const consoProfile = [480, 450, 410, 350, 300, 270, 260, 280, 330, 390, 450, 490];
+const pvgisEastProduction = 2868;
+const pvgisWestProduction = 2643;
+const defaultAnnualProduction = pvgisEastProduction + pvgisWestProduction;
+const defaultElectricityRate = 0.194;
+const defaultExportRate = 0.04;
+const batteryCapacityKwh = 10;
+const batterySelfUseGain = 0.32;
 
 const state = {
   clientName: '',
   address: '',
   date: new Date().toLocaleDateString('fr-FR'),
   reference: '',
-  consumption: '8500',
+  consumption: '4490',
   heating: 'Électrique',
   occupants: '4',
-  equipments: ['Cumulus / ECS', 'Climatisation'],
+  equipments: [],
   panels: 12,
   panelWc: 500,
   inverter: 'Micro-onduleurs',
   orientation: 'Est / Ouest',
-  tilt: '30',
+  tilt: '35',
   installType: 'Surimposition toiture',
-  price: 15900,
-  grants: 1800,
-  selfUse: 42,
+  price: 12900,
+  grants: 0,
+  selfUse: 34,
   batteryCost: 6900,
   pvCurve: buildPvCurve(12, 500),
-  consoCurve: [...consoCurve],
+  consoCurve: buildConsumptionCurve(4490),
   pvCurveOverridden: false,
+  consoCurveOverridden: false,
   photo: '',
   photoMode: 'landscape',
   consultant: 'VOTRE EXPERT PHOTOVOLTAÏQUE',
@@ -39,9 +43,20 @@ const state = {
 };
 
 function buildPvCurve(panels, panelWc) {
-  const annualTarget = (Number(panels || 0) * Number(panelWc || 0) * defaultAnnualYieldPerKwc) / 1000;
+  const defaultPower = (12 * 500) / 1000;
+  const configuredPower = (Number(panels || 0) * Number(panelWc || 0)) / 1000;
+  const annualTarget = configuredPower ? defaultAnnualProduction * (configuredPower / defaultPower) : 0;
   const profileTotal = pvProfile.reduce((sum, value) => sum + value, 0);
   const monthly = pvProfile.map((value) => Math.round((value / profileTotal) * annualTarget));
+  const delta = Math.round(annualTarget) - monthly.reduce((sum, value) => sum + value, 0);
+  monthly[monthly.length - 1] += delta;
+  return monthly;
+}
+
+function buildConsumptionCurve(consumption) {
+  const annualTarget = Number(consumption || 0);
+  const profileTotal = consoProfile.reduce((sum, value) => sum + value, 0);
+  const monthly = consoProfile.map((value) => Math.round((value / profileTotal) * annualTarget));
   const delta = Math.round(annualTarget) - monthly.reduce((sum, value) => sum + value, 0);
   monthly[monthly.length - 1] += delta;
   return monthly;
@@ -95,39 +110,69 @@ function selfUseRate() {
   return Math.max(0, Math.min(100, Number(state.selfUse || 0))) / 100;
 }
 
+function scenarioSummary(rate) {
+  const production = annualProduction();
+  const consumption = adjustedConsumption();
+  const selfConsumed = Math.min(production, consumption, Math.round(production * rate));
+  const surplus = Math.max(0, production - selfConsumed);
+  const selfUsePercent = production ? Math.round((selfConsumed / production) * 100) : 0;
+  const surplusPercent = Math.max(0, 100 - selfUsePercent);
+  const coverage = consumption ? Math.min(100, Math.round((selfConsumed / consumption) * 100)) : 0;
+  const billReduction = Math.round(selfConsumed * defaultElectricityRate);
+  const resale = Math.round(surplus * defaultExportRate);
+
+  return {
+    production,
+    consumption,
+    selfConsumed,
+    surplus,
+    selfUsePercent,
+    surplusPercent,
+    coverage,
+    billReduction,
+    resale,
+    totalGain: billReduction + resale
+  };
+}
+
+function baseScenario() {
+  return scenarioSummary(selfUseRate());
+}
+
+function batteryScenario() {
+  return scenarioSummary(batterySelfUseRate());
+}
+
 function selfConsumedKwh() {
-  return Math.round(annualProduction() * selfUseRate());
+  return baseScenario().selfConsumed;
 }
 
 function exportedKwh() {
-  return Math.max(0, annualProduction() - selfConsumedKwh());
+  return baseScenario().surplus;
 }
 
 function billSaving() {
-  return Math.round(selfConsumedKwh() * defaultElectricityRate * householdLoadFactor());
+  return baseScenario().billReduction;
 }
 
 function resaleGain() {
-  return Math.round(exportedKwh() * defaultExportRate);
+  return baseScenario().resale;
 }
 
 function coverageRate() {
-  const consumption = adjustedConsumption();
-  if (!consumption) return 0;
-  return Math.min(100, Math.round((selfConsumedKwh() / consumption) * 100));
+  return baseScenario().coverage;
 }
 
 function batterySelfUseRate() {
-  return Math.min(0.8, selfUseRate() + batterySelfUseGain);
+  return Math.min(0.7, selfUseRate() + batterySelfUseGain);
 }
 
 function batterySaving() {
-  const extraSelfConsumed = Math.max(0, Math.round(annualProduction() * (batterySelfUseRate() - selfUseRate())));
-  return Math.round(extraSelfConsumed * (defaultElectricityRate - defaultExportRate) * householdLoadFactor());
+  return Math.max(0, batteryScenario().totalGain - baseScenario().totalGain);
 }
 
 function totalGain() {
-  return billSaving() + resaleGain();
+  return baseScenario().totalGain;
 }
 
 function netCost() {
@@ -142,6 +187,10 @@ function roiYears() {
 function batteryRoi() {
   const gain = batterySaving();
   return gain ? Math.max(1, Math.round((Number(state.batteryCost || 0) / gain) * 10) / 10).toString().replace('.', ',') : '...';
+}
+
+function batteryNetDifference(years = 20) {
+  return batterySaving() * years - Number(state.batteryCost || 0);
 }
 
 function input(label, key, type = 'text', attrs = '') {
@@ -250,12 +299,13 @@ function curveInputs(label, key) {
 }
 
 function renderDonut() {
-  const selfUse = Math.round(selfUseRate() * 100);
-  const sold = 100 - selfUse;
+  const scenario = baseScenario();
+  const selfUse = scenario.selfUsePercent;
+  const sold = scenario.surplusPercent;
   return `
     <canvas class="donut" width="140" height="140" data-self="${selfUse}" aria-label="Répartition de la production"></canvas>
-    <p class="self-used"><strong>Autoconsommé</strong> ${selfUse}%</p>
-    <p class="exported-surplus"><strong>Surplus injecté</strong> ${sold}%</p>
+    <p class="self-used"><strong>Autoconsommé</strong> ${selfUse}% <small>${formatNumber(scenario.selfConsumed)} kWh</small></p>
+    <p class="exported-surplus"><strong>Surplus injecté</strong> ${sold}% <small>${formatNumber(scenario.surplus)} kWh</small></p>
   `;
 }
 
@@ -291,13 +341,16 @@ function drawDonuts() {
 }
 
 function renderReport() {
-  const production = annualProduction();
-  const coverage = coverageRate();
-  const saving = billSaving();
-  const resale = resaleGain();
+  const withoutBattery = baseScenario();
+  const withBattery = batteryScenario();
+  const production = withoutBattery.production;
+  const coverage = withoutBattery.coverage;
+  const saving = withoutBattery.billReduction;
+  const resale = withoutBattery.resale;
   const batteryGain = batterySaving();
-  const batteryEconomy = saving + batteryGain;
-  const batterySelfUsePercent = Math.round(batterySelfUseRate() * 100);
+  const batteryEconomy = withBattery.totalGain;
+  const batterySelfUsePercent = withBattery.selfUsePercent;
+  const netBattery20Years = batteryNetDifference(20);
   return `
     <article id="report" class="report" aria-label="Étude photovoltaïque">
       <header class="report-header">
@@ -365,7 +418,7 @@ function renderReport() {
         <div class="panel production-panel">
           <div class="title-row">${sectionNumber(4, 'PRODUCTION ANNUELLE')}</div>
           ${renderChart()}
-          <p class="annual"><strong>PRODUCTION ANNUELLE ESTIMÉE :</strong> <b>${formatNumber(production)} kWh/an</b> <span>Selon pans</span></p>
+          <p class="annual"><strong>PRODUCTION PVGIS :</strong> <b>${formatNumber(production)} kWh/an</b> <span>Est ${formatNumber(pvgisEastProduction)} / Ouest ${formatNumber(pvgisWestProduction)}</span></p>
         </div>
 
         <div class="panel split-panel">
@@ -378,8 +431,8 @@ function renderReport() {
       <section class="economy-grid">
         <div class="panel savings-panel">
           ${sectionNumber(6, 'VOS ÉCONOMIES')}
-          <div class="line"><span>Baisse facture</span><strong>${money(saving)}</strong><small>/ an</small></div>
-          <div class="line"><span>Surplus injecté</span><strong>${money(resale)}</strong><small>/ an</small></div>
+          <div class="line"><span>Baisse facture</span><strong>${money(saving)}</strong><small>${defaultElectricityRate.toString().replace('.', ',')} €/kWh</small></div>
+          <div class="line"><span>Surplus injecté</span><strong>${money(resale)}</strong><small>${defaultExportRate.toString().replace('.', ',')} €/kWh</small></div>
           <div class="total"><span>GAIN ANNUEL TOTAL</span><strong>${money(totalGain())}</strong><small>économies + revente</small></div>
         </div>
 
@@ -404,18 +457,18 @@ function renderReport() {
         <div class="battery-grid">
           <div>
             <h3>SANS BATTERIE</h3>
-            <p>Autoconsommation classique</p>
-            <dl><div><dt>Autoconsommation</dt><dd>≈ ${Math.round(selfUseRate() * 100)} %</dd></div><div><dt>Économie/an</dt><dd>${money(saving)}</dd></div><div><dt>Surcoût matériel</dt><dd>0 €</dd></div></dl>
+            <p>Profil Est/Ouest matin + soir</p>
+            <dl><div><dt>Autoconsommation</dt><dd>≈ ${withoutBattery.selfUsePercent} %</dd></div><div><dt>Couverture conso</dt><dd>${withoutBattery.coverage} %</dd></div><div><dt>Gain/an</dt><dd>${money(withoutBattery.totalGain)}</dd></div></dl>
           </div>
           <div>
             <h3>AVEC BATTERIE</h3>
-            <p>Stockage ≈ 5 à 10 kWh</p>
-            <dl><div><dt>Autoconsommation</dt><dd>≈ ${batterySelfUsePercent} %</dd></div><div><dt>Économie/an</dt><dd>${money(batteryEconomy)}</dd></div><div><dt>Surcoût matériel</dt><dd>+ ${money(state.batteryCost)}</dd></div></dl>
+            <p>Stockage ${batteryCapacityKwh} kWh (+ ${money(state.batteryCost)})</p>
+            <dl><div><dt>Autoconsommation</dt><dd>≈ ${batterySelfUsePercent} %</dd></div><div><dt>Couverture conso</dt><dd>${withBattery.coverage} %</dd></div><div><dt>Gain/an</dt><dd>${money(batteryEconomy)}</dd></div></dl>
           </div>
           <div>
             <h3>DIFFÉRENCE</h3>
-            <p>Gain supplémentaire / an</p>
-            <dl><div><dt>Gain en plus</dt><dd>+ ${money(batteryGain)}/an</dd></div><div><dt>Sur 20 ans</dt><dd>+ ${money(batteryGain * 20)}</dd></div><div><dt>ROI batterie</dt><dd>${batteryRoi()} ans</dd></div></dl>
+            <p>Écart net 20 ans : ${money(netBattery20Years)}</p>
+            <dl><div><dt>Gain en plus</dt><dd>+ ${money(batteryGain)}/an</dd></div><div><dt>Gain brut 20 ans</dt><dd>+ ${money(batteryGain * 20)}</dd></div><div><dt>ROI batterie</dt><dd>${batteryRoi()} ans</dd></div></dl>
           </div>
         </div>
       </section>
@@ -557,6 +610,9 @@ function bindEvents() {
         if (key === 'pvCurve') {
           state.pvCurveOverridden = true;
         }
+        if (key === 'consoCurve') {
+          state.consoCurveOverridden = true;
+        }
         renderPreview();
       });
       return;
@@ -569,6 +625,13 @@ function bindEvents() {
         document.querySelectorAll('input[name^="pvCurve:"]').forEach((input) => {
           const index = Number(input.name.split(':')[1]);
           input.value = state.pvCurve[index];
+        });
+      }
+      if (event.target.name === 'consumption' && !state.consoCurveOverridden) {
+        state.consoCurve = buildConsumptionCurve(state.consumption);
+        document.querySelectorAll('input[name^="consoCurve:"]').forEach((input) => {
+          const index = Number(input.name.split(':')[1]);
+          input.value = state.consoCurve[index];
         });
       }
       renderPreview();
