@@ -119,7 +119,8 @@ summary {
   font-weight: 700;
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
   min-height: 38px;
   border: 1px solid #cfd6e0;
@@ -153,7 +154,7 @@ summary {
 
 .curve-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -947,6 +948,7 @@ summary {
 }
 
 .projection-line {
+  grid-template-columns: 1fr auto auto;
   min-height: 34px;
   margin-bottom: 10px;
   padding: 7px 12px;
@@ -966,7 +968,13 @@ summary {
 }
 
 .projection-line strong {
-  font-size: 20px;
+  font-size: 16px;
+}
+
+.projection-line small {
+  margin-left: 6px;
+  color: #667085;
+  font-size: 8px;
 }
 
 .battery-panel {
@@ -1046,7 +1054,7 @@ summary {
 
 .battery-grid dl {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   margin: 0;
 }
 
