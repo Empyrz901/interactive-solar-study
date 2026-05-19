@@ -202,7 +202,9 @@ function buildScenario(values, options = {}) {
   const roundedSelfConsumed = Math.round(selfConsumed);
   const roundedSurplus = Math.round(surplus);
   const roundedGridPurchase = Math.round(gridPurchase);
-  const billReduction = Math.round(roundedSelfConsumed * Number(state.electricityRate || 0));
+  const electricityRate = Number(state.electricityRate || 0);
+  const billBefore = consumption * electricityRate;
+  const billReduction = Math.round(roundedSelfConsumed * electricityRate);
   const resale = Math.round(roundedSurplus * Number(state.exportRate || 0));
 
   return {
@@ -214,6 +216,7 @@ function buildScenario(values, options = {}) {
     selfUsePercent: production ? Math.round((roundedSelfConsumed / production) * 100) : 0,
     surplusPercent: production ? Math.round((roundedSurplus / production) * 100) : 0,
     coverage: consumption ? Math.round((roundedSelfConsumed / consumption) * 100) : 0,
+    billReductionPercent: billBefore ? Math.round(((roundedSelfConsumed * electricityRate) / billBefore) * 100) : 0,
     billReduction,
     resale,
     totalGain: billReduction + resale,
@@ -633,6 +636,7 @@ function renderReport() {
             <small>baisse de facture + revente surplus</small>
           </div>
           <div class="saving-split">
+            <div class="bill-drop"><span>Baisse estimée de votre facture</span><strong>${withoutBattery.billReductionPercent} %</strong><small>hors revente surplus</small></div>
             <div><span>Baisse facture</span><strong>${money(saving)} <em>/ an</em></strong><small>${Number(state.electricityRate || 0).toString().replace('.', ',')} €/kWh</small></div>
             <div><span>Surplus injecté</span><strong>${money(resale)} <em>/ an</em></strong><small>${Number(state.exportRate || 0).toString().replace('.', ',')} €/kWh</small></div>
           </div>

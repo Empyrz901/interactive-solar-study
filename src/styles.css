@@ -1016,7 +1016,16 @@ summary {
 }
 
 .saving-split div:nth-child(2) {
+  border-color: #2383c4;
+}
+
+.saving-split div:nth-child(3) {
   border-color: #f5a20a;
+}
+
+.saving-split .bill-drop strong {
+  color: #2383c4;
+  font-size: 17px;
 }
 
 .saving-split strong {
