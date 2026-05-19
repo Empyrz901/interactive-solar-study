@@ -227,16 +227,24 @@ function buildScenario(values, options = {}) {
 
 function simulation() {
   const values = hourlySeries();
+  const batteryCapacity = Number(state.batteryCapacity || 0);
+  const batteryCost = Number(state.batteryCost || 0);
   const withoutBattery = buildScenario(values);
-  const withBattery = buildScenario(values, { batteryCapacity: Number(state.batteryCapacity || 0) });
+  const withBattery = buildScenario(values, { batteryCapacity });
+  withoutBattery.projectCost = Number(state.price || 0);
+  withBattery.projectCost = Number(state.price || 0) + (batteryCapacity > 0 ? batteryCost : 0);
+
   return {
     withoutBattery,
     withBattery,
+    projectScenario: batteryCapacity > 0 ? withBattery : withoutBattery,
+    hasBatteryProject: batteryCapacity > 0,
     difference: {
       annualGain: withBattery.totalGain - withoutBattery.totalGain,
       billReduction: withBattery.billReduction - withoutBattery.billReduction,
       resale: withBattery.resale - withoutBattery.resale,
-      gridPurchase: withoutBattery.gridPurchase - withBattery.gridPurchase
+      gridPurchase: withoutBattery.gridPurchase - withBattery.gridPurchase,
+      batteryExtraCost: withBattery.projectCost - withoutBattery.projectCost
     }
   };
 }
@@ -471,8 +479,7 @@ function curveInputs(label, key) {
   `;
 }
 
-function renderDonut() {
-  const scenario = simulation().withoutBattery;
+function renderDonut(scenario = simulation().projectScenario) {
   const selfUse = scenario.selfUsePercent;
   const sold = scenario.surplusPercent;
   return `
@@ -537,13 +544,15 @@ function renderReport() {
   const result = simulation();
   const withoutBattery = result.withoutBattery;
   const withBattery = result.withBattery;
+  const projectScenario = result.projectScenario;
   const difference = result.difference;
-  const production = withoutBattery.production;
-  const coverage = withoutBattery.coverage;
-  const saving = withoutBattery.billReduction;
-  const resale = withoutBattery.resale;
+  const production = projectScenario.production;
+  const coverage = projectScenario.coverage;
+  const saving = projectScenario.billReduction;
+  const resale = projectScenario.resale;
   const batteryEconomy = withBattery.totalGain;
   const batterySelfUsePercent = withBattery.selfUsePercent;
+  const projectCost = projectScenario.projectCost;
   return `
     <article id="report" class="report" aria-label="Étude photovoltaïque">
       <header class="report-header">
@@ -623,7 +632,7 @@ function renderReport() {
         <div class="panel split-panel">
           ${sectionNumber(5, 'RÉPARTITION')}
           <div class="coverage"><strong>AUTONOMIE ÉNERGÉTIQUE</strong><b>${coverage} %</b><small>Part de votre consommation couverte par votre production solaire</small></div>
-          ${renderDonut()}
+          ${renderDonut(projectScenario)}
         </div>
       </section>
 
@@ -632,11 +641,11 @@ function renderReport() {
           ${sectionNumber(6, 'VOS ÉCONOMIES')}
           <div class="annual-gain">
             <span>GAIN ANNUEL TOTAL</span>
-            <strong>${money(withoutBattery.totalGain)} <em>/ an</em></strong>
+            <strong>${money(projectScenario.totalGain)} <em>/ an</em></strong>
             <small>baisse de facture + revente surplus</small>
           </div>
           <div class="saving-split">
-            <div class="bill-drop"><span>Baisse estimée de votre facture</span><strong>${withoutBattery.billReductionPercent} %</strong><small>hors revente surplus</small></div>
+            <div class="bill-drop"><span>Baisse estimée de votre facture</span><strong>${projectScenario.billReductionPercent} %</strong><small>hors revente surplus</small></div>
             <div><span>Baisse facture</span><strong>${money(saving)} <em>/ an</em></strong><small>${Number(state.electricityRate || 0).toString().replace('.', ',')} €/kWh</small></div>
             <div><span>Surplus injecté</span><strong>${money(resale)} <em>/ an</em></strong><small>${Number(state.exportRate || 0).toString().replace('.', ',')} €/kWh</small></div>
           </div>
@@ -644,8 +653,8 @@ function renderReport() {
 
         <div class="panel cost-panel">
           ${sectionNumber(7, 'COÛT & RENTABILITÉ')}
-          <div class="project-cost"><span>Coût total du projet</span><strong>${money(state.price)}</strong></div>
-          <div class="roi"><span>RETOUR SUR INVESTISSEMENT</span><strong>${roiYears(withoutBattery.totalGain, Number(state.price || 0))} ans</strong><small>Estimation basée sur le gain annuel</small></div>
+          <div class="project-cost"><span>Coût total du projet</span><strong>${money(projectCost)}</strong></div>
+          <div class="roi"><span>RETOUR SUR INVESTISSEMENT</span><strong>${roiYears(projectScenario.totalGain, projectCost)} ans</strong><small>Estimation basée sur le gain annuel</small></div>
         </div>
 
         <div class="panel projection-panel">
@@ -683,7 +692,7 @@ function renderReport() {
           <div>
             <h3>PLUS D’AUTONOMIE</h3>
             <p>Utilisez davantage votre propre énergie.</p>
-            <dl><div><dt>Autonomie gagnée</dt><dd>+ ${Math.max(0, withBattery.coverage - withoutBattery.coverage)} pts</dd></div><div><dt>Achat réseau évité</dt><dd>${formatNumber(difference.gridPurchase)} kWh</dd></div><div><dt>Dépendance réseau</dt><dd>réduite</dd></div><div><dt>Confort</dt><dd>stockage solaire</dd></div></dl>
+            <dl><div><dt>Autonomie gagnée</dt><dd>+ ${Math.max(0, withBattery.coverage - withoutBattery.coverage)} pts</dd></div><div><dt>Économies en plus</dt><dd>${money(difference.annualGain)}/an</dd></div><div><dt>Achat réseau évité</dt><dd>${formatNumber(difference.gridPurchase)} kWh</dd></div><div><dt>Surcoût batterie</dt><dd>${money(difference.batteryExtraCost)}</dd></div></dl>
           </div>
         </div>
       </section>
