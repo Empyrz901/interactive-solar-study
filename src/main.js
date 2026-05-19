@@ -25,7 +25,7 @@ const state = {
   panels: 12,
   panelWc: 500,
   inverter: 'Micro-onduleurs',
-  orientation: 'PVGIS libre',
+  orientation: '',
   tilt: '35',
   installType: 'Surimposition toiture',
   price: 12900,
@@ -36,7 +36,7 @@ const state = {
   batteryEfficiency: defaultBatteryEfficiency,
   batteryCost: 6900,
   pvCurve: buildPvCurve(12, 500),
-  consoCurve: buildConsumptionCurve(4490),
+  consoCurve: buildConsumptionCurve(4990),
   photo: '',
   photoMode: 'landscape',
   consultant: 'VOTRE EXPERT PHOTOVOLTAÏQUE',
@@ -427,7 +427,7 @@ function renderReport() {
         <div class="panel home-panel">
           ${sectionNumber(2, 'LE FOYER')}
           <dl class="facts">
-            <div><dt>Conso/an :</dt><dd>${formatNumber(adjustedConsumption())} kWh</dd></div>
+            <div><dt>Conso/an :</dt><dd class="important-consumption">${formatNumber(adjustedConsumption())} kWh</dd></div>
             <div><dt>Chauffage :</dt><dd>${textValue(state.heating)}</dd></div>
             <div><dt>Occupants :</dt><dd>${textValue(state.occupants)}</dd></div>
           </dl>
@@ -441,7 +441,7 @@ function renderReport() {
             <div><span>NB PANNEAUX</span><strong>${textValue(state.panels)}</strong><small>× ${formatNumber(state.panelWc)} Wc</small></div>
             <div><span>PUISSANCE</span><strong>${kwc()} kWc</strong><small>totale installée</small></div>
             <div><span>ONDULEUR</span><strong>${textValue(state.inverter)}</strong><small>type / marque</small></div>
-            <div><span>ORIENTATION</span><strong>${textValue(state.orientation)}</strong><small>${textValue(state.tilt)}° d'inclinaison</small></div>
+            <div><span>ORIENTATION</span><strong>${textValue(state.orientation, 'À renseigner')}</strong><small>${textValue(state.tilt)}° d'inclinaison</small></div>
           </div>
           <p>Type de pose : ${textValue(state.installType)}</p>
         </div>
@@ -451,7 +451,10 @@ function renderReport() {
         <div class="panel production-panel">
           <div class="title-row">${sectionNumber(4, 'PRODUCTION ANNUELLE')}</div>
           ${renderChart()}
-          <p class="annual"><strong>PRODUCTION PVGIS :</strong> <b>${formatNumber(production)} kWh/an</b> <span>Saisie mensuelle, orientation libre</span></p>
+          <div class="annual annual-summary">
+            <div class="annual-row production-total"><strong>Production annuelle PVGIS :</strong><b>${formatNumber(production)} kWh/an</b></div>
+            <div class="annual-row consumption-total"><strong>Consommation annuelle :</strong><b>${formatNumber(adjustedConsumption())} kWh/an</b></div>
+          </div>
         </div>
 
         <div class="panel split-panel">

@@ -580,6 +580,10 @@ summary {
   text-align: right;
 }
 
+.facts .important-consumption {
+  color: #2383c4;
+}
+
 .home-panel h3 {
   margin: 0 0 11px;
   font-size: 10px;
@@ -773,28 +777,41 @@ summary {
 
 .annual {
   display: grid;
-  grid-template-columns: auto minmax(145px, 1fr) auto;
-  align-items: center;
-  gap: 12px;
+  gap: 4px;
   margin: 4px 0 0;
-  padding: 5px 9px;
+  padding: 6px 9px;
   border-radius: 4px;
   background: #0d2e4b;
   color: #fff;
   font-size: 10px;
 }
 
+.annual-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.annual-row strong {
+  font-weight: 900;
+}
+
 .annual b {
   margin-left: 0;
-  text-align: center;
+  text-align: right;
   font-size: 12px;
   white-space: nowrap;
 }
 
-.annual span {
-  margin-left: 0;
-  color: #b9c5d0;
-  font-size: 9px;
+.annual .production-total strong,
+.annual .production-total b {
+  color: #29b263;
+}
+
+.annual .consumption-total strong,
+.annual .consumption-total b {
+  color: #58a8df;
 }
 
 .split-panel {
