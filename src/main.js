@@ -94,6 +94,35 @@ function activeConsumptionCurve() {
   return activeEnergyMode() === 'quick' ? buildConsumptionCurve(state.quickConsumptionAnnual) : state.consoCurve;
 }
 
+function monthlyEvConsumptionCurve() {
+  const evAnnual = annualEvConsumption();
+  return evAnnual ? distributeAnnualByProfile(evAnnual, monthDays) : Array(12).fill(0);
+}
+
+function monthlyConsumptionCurveWithEv() {
+  const evCurve = monthlyEvConsumptionCurve();
+  return activeConsumptionCurve().map((value, index) => Number(value || 0) + Number(evCurve[index] || 0));
+}
+
+function energyDataCheck() {
+  const productionCurve = activeProductionCurve();
+  const consumptionCurve = monthlyConsumptionCurveWithEv();
+  const productionMonthly = Math.round(productionCurve.reduce((sum, value) => sum + Number(value || 0), 0));
+  const consumptionMonthly = Math.round(consumptionCurve.reduce((sum, value) => sum + Number(value || 0), 0));
+  const productionAnnual = annualProduction();
+  const consumptionAnnual = adjustedConsumption();
+
+  return {
+    productionMonthly,
+    consumptionMonthly,
+    productionAnnual,
+    consumptionAnnual,
+    productionGap: productionMonthly - productionAnnual,
+    consumptionGap: consumptionMonthly - consumptionAnnual,
+    valid: productionMonthly === productionAnnual && consumptionMonthly === consumptionAnnual
+  };
+}
+
 function formatNumber(value) {
   const number = Number(value) || 0;
   return new Intl.NumberFormat('fr-FR').format(Math.round(number));
@@ -111,11 +140,11 @@ function kwc() {
 }
 
 function annualProduction() {
-  return activeProductionCurve().reduce((sum, value) => sum + Number(value || 0), 0);
+  return Math.round(activeProductionCurve().reduce((sum, value) => sum + Number(value || 0), 0));
 }
 
 function adjustedConsumption() {
-  return activeConsumptionCurve().reduce((sum, value) => sum + Number(value || 0), 0) + annualEvConsumption();
+  return Math.round(activeConsumptionCurve().reduce((sum, value) => sum + Number(value || 0), 0) + annualEvConsumption());
 }
 
 function netCost() {
@@ -171,7 +200,7 @@ function hourlySeries() {
   const evAnnual = annualEvConsumption();
   const evConsumption = evAnnual
     ? distributeMonthlyToHours(
-        monthDays.map((days) => (evAnnual * days) / 365),
+        monthlyEvConsumptionCurve(),
         (hour) => evHourlyWeight(hour)
       )
     : [];
@@ -437,7 +466,7 @@ function money(value) {
 
 function renderChart() {
   const pvCurve = activeProductionCurve();
-  const consoCurve = activeConsumptionCurve();
+  const consoCurve = monthlyConsumptionCurveWithEv();
   const maxValue = Math.max(...pvCurve, ...consoCurve, 100);
   const max = Math.ceil(maxValue / 100) * 100;
   const axis = [max, max * 0.8, max * 0.6, max * 0.4, max * 0.2, 0];
@@ -548,18 +577,24 @@ function quickEntryPanel() {
         ${input('Production annuelle (kWh/an)', 'quickProductionAnnual', 'number', 'min="0"')}
         ${input('Consommation annuelle (kWh/an)', 'quickConsumptionAnnual', 'number', 'min="0"')}
       </div>
-      <p>Le logiciel génère automatiquement une répartition mensuelle estimée avec un profil standard résidentiel.</p>
+      <p>Le logiciel génère automatiquement une répartition mensuelle estimée et normalisée avec un profil standard résidentiel.</p>
     </div>
   `;
 }
 
 function energyDataTabs() {
   const currentMode = activeEnergyMode();
+  const check = energyDataCheck();
   return `
     <div class="energy-tabs" role="tablist" aria-label="Mode de saisie des données énergétiques">
       <button type="button" class="${currentMode === 'monthly' ? 'active' : ''}" data-energy-mode="monthly">Vérification des données mensuelles</button>
       <button type="button" class="${currentMode === 'quick' ? 'active' : ''}" data-energy-mode="quick">Saisie rapide</button>
     </div>
+    ${
+      check.valid
+        ? ''
+        : `<p class="energy-alert">Écart détecté : la somme mensuelle ne correspond pas aux totaux annuels. Vérifiez les valeurs ou relancez la répartition estimée.</p>`
+    }
     ${currentMode === 'quick' ? quickEntryPanel() : verificationTable()}
   `;
 }
@@ -601,6 +636,7 @@ function renderReport() {
   const withBattery = result.withBattery;
   const projectScenario = result.projectScenario;
   const production = projectScenario.production;
+  const consumption = projectScenario.consumption;
   const coverage = projectScenario.coverage;
   const batteryEconomy = withBattery.totalGain;
   const batterySelfUsePercent = withBattery.selfUsePercent;
@@ -648,7 +684,7 @@ function renderReport() {
         <div class="panel home-panel">
           ${sectionNumber(2, 'LE FOYER')}
           <dl class="facts">
-            <div><dt>Conso/an :</dt><dd class="important-consumption">${formatNumber(adjustedConsumption())} kWh</dd></div>
+            <div><dt>Conso/an :</dt><dd class="important-consumption">${formatNumber(consumption)} kWh</dd></div>
             <div><dt>Chauffage :</dt><dd>${textValue(state.heating)}</dd></div>
             <div><dt>Occupants :</dt><dd>${textValue(state.occupants)}</dd></div>
           </dl>
@@ -677,7 +713,7 @@ function renderReport() {
           ${renderChart()}
           <div class="annual annual-summary">
             <div class="annual-row production-total"><strong>Production annuelle :</strong><b>${formatNumber(production)} kWh/an</b></div>
-            <div class="annual-row consumption-total"><strong>Consommation annuelle :</strong><b>${formatNumber(adjustedConsumption())} kWh/an</b></div>
+            <div class="annual-row consumption-total"><strong>Consommation annuelle :</strong><b>${formatNumber(consumption)} kWh/an</b></div>
           </div>
         </div>
 
