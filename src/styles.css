@@ -1424,19 +1424,21 @@ summary {
 }
 
 .footer-contact {
-  display: grid;
-  gap: 2px;
-  justify-items: end;
-  min-width: 118px;
-  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 350px;
+  padding: 5px 10px;
   border-radius: 4px;
   background: #eef6fc;
   color: #0d2e4b;
   text-align: right;
+  white-space: nowrap;
 }
 
 .footer-contact strong {
-  font-size: 9px;
+  font-size: 8.6px;
   line-height: 1;
 }
 

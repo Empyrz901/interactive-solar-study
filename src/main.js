@@ -37,7 +37,7 @@ const state = {
   importMessage: '',
   photo: '',
   photoMode: 'landscape',
-  consultant: 'DAOUDI SAMY',
+  consultant: 'Daoudi Samy',
   phone: '06 48 04 21 71'
 };
 
@@ -755,7 +755,7 @@ function renderReport() {
       <footer class="report-footer">
         <span>Document non contractuel — HABITONTOIT 3 rue du Champenatre 25770 Serre-Les-Sapins</span>
         <div class="footer-contact">
-          <strong>${state.consultant}</strong>
+          <strong>${state.consultant}, gérant de l'entreprise HABITONTOIT</strong>
           <span>${state.phone}</span>
         </div>
       </footer>
