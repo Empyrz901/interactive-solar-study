@@ -1309,6 +1309,18 @@ summary {
   font-size: 8px;
 }
 
+.autonomy-list {
+  display: grid;
+  gap: 9px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+  color: #0d2e4b;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
 .battery-grid dl {
   display: grid;
   gap: 4px;

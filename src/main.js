@@ -545,7 +545,6 @@ function renderReport() {
   const withoutBattery = result.withoutBattery;
   const withBattery = result.withBattery;
   const projectScenario = result.projectScenario;
-  const difference = result.difference;
   const production = projectScenario.production;
   const coverage = projectScenario.coverage;
   const batteryEconomy = withBattery.totalGain;
@@ -629,7 +628,7 @@ function renderReport() {
 
         <div class="panel split-panel">
           ${sectionNumber(5, 'RÉPARTITION')}
-          <div class="coverage"><strong>AUTONOMIE ÉNERGÉTIQUE</strong><b>${coverage} %</b><small>Part de votre consommation couverte par votre production solaire</small></div>
+          <div class="coverage"><strong>ÉNERGIE SOLAIRE UTILISÉE</strong><b>${coverage} %</b></div>
           ${renderDonut(projectScenario)}
         </div>
       </section>
@@ -679,17 +678,20 @@ function renderReport() {
           <div>
             <h3>SANS BATTERIE</h3>
             <p>Simulation horaire directe</p>
-            <dl><div><dt>Autoconsommation</dt><dd>${withoutBattery.selfUsePercent} %</dd></div><div><dt>Autonomie conso</dt><dd>${withoutBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withoutBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(withoutBattery.totalGain)}</dd></div></dl>
+            <dl><div><dt>Autoconsommation</dt><dd>${withoutBattery.selfUsePercent} %</dd></div><div><dt>Énergie utilisée</dt><dd>${withoutBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withoutBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(withoutBattery.totalGain)}</dd></div></dl>
           </div>
           <div>
             <h3>AVEC BATTERIE</h3>
             <p>Stockage ${formatDecimal(state.batteryCapacity)} kWh, rendement ${Math.round(Number(state.batteryEfficiency || 0) * 100)} %</p>
-            <dl><div><dt>Autoconsommation</dt><dd>${batterySelfUsePercent} %</dd></div><div><dt>Autonomie conso</dt><dd>${withBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(batteryEconomy)}</dd></div></dl>
+            <dl><div><dt>Autoconsommation</dt><dd>${batterySelfUsePercent} %</dd></div><div><dt>Énergie utilisée</dt><dd>${withBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(batteryEconomy)}</dd></div></dl>
           </div>
           <div>
             <h3>PLUS D’AUTONOMIE</h3>
-            <p>Utilisez davantage votre propre énergie.</p>
-            <dl><div><dt>Autonomie gagnée</dt><dd>+ ${Math.max(0, withBattery.coverage - withoutBattery.coverage)} pts</dd></div><div><dt>Économies en plus</dt><dd>${money(difference.annualGain)}/an</dd></div><div><dt>Achat réseau évité</dt><dd>${formatNumber(difference.gridPurchase)} kWh</dd></div><div><dt>Surcoût batterie</dt><dd>${money(difference.batteryExtraCost)}</dd></div></dl>
+            <ul class="autonomy-list">
+              <li>✔ Utilisez davantage votre propre énergie</li>
+              <li>✔ Plus d’énergie disponible le soir</li>
+              <li>✔ Achat réseau évité</li>
+            </ul>
           </div>
         </div>
       </section>
