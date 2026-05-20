@@ -548,8 +548,6 @@ function renderReport() {
   const difference = result.difference;
   const production = projectScenario.production;
   const coverage = projectScenario.coverage;
-  const saving = projectScenario.billReduction;
-  const resale = projectScenario.resale;
   const batteryEconomy = withBattery.totalGain;
   const batterySelfUsePercent = withBattery.selfUsePercent;
   const projectCost = projectScenario.projectCost;
@@ -602,8 +600,8 @@ function renderReport() {
           </dl>
           <h3>PROFIL :</h3>
           <ul>
-            <li class="active">Standard résidentiel</li>
-            <li class="${evProfileComplete() ? 'active' : ''}">Véhicule électrique ${evProfileComplete() ? `+ ${formatNumber(annualEvConsumption())} kWh/an` : 'non inclus'}</li>
+            <li class="active">Profil standard résidentiel</li>
+            ${evProfileComplete() ? `<li class="active">Véhicule électrique + ${formatNumber(annualEvConsumption())} kWh/an</li>` : ''}
           </ul>
         </div>
 
@@ -640,14 +638,13 @@ function renderReport() {
         <div class="panel savings-panel">
           ${sectionNumber(6, 'VOS ÉCONOMIES')}
           <div class="annual-gain">
-            <span>GAIN ANNUEL TOTAL</span>
+            <span>Gain annuel estimé</span>
             <strong>${money(projectScenario.totalGain)} <em>/ an</em></strong>
-            <small>baisse de facture + revente surplus</small>
+            <small>économies sur facture + revente surplus</small>
           </div>
-          <div class="saving-split">
-            <div class="bill-drop"><span>Baisse estimée de votre facture</span><strong>${projectScenario.billReductionPercent} %</strong><small>hors revente surplus</small></div>
-            <div><span>Baisse facture</span><strong>${money(saving)} <em>/ an</em></strong><small>${Number(state.electricityRate || 0).toString().replace('.', ',')} €/kWh</small></div>
-            <div><span>Surplus injecté</span><strong>${money(resale)} <em>/ an</em></strong><small>${Number(state.exportRate || 0).toString().replace('.', ',')} €/kWh</small></div>
+          <div class="bill-drop-summary">
+            <span>Facture réduite d’environ</span>
+            <strong>${projectScenario.billReductionPercent} %</strong>
           </div>
         </div>
 

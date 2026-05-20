@@ -997,6 +997,27 @@ summary {
   font-size: 8px;
 }
 
+.bill-drop-summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 34px;
+  padding: 8px 10px;
+  border: 1px solid #2383c4;
+  border-radius: 6px;
+  background: #eef6fc;
+  color: #0d2e4b;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.bill-drop-summary strong {
+  color: #2383c4;
+  font-size: 19px;
+  white-space: nowrap;
+}
+
 .saving-split {
   display: grid;
   gap: 7px;
