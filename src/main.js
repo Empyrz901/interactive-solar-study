@@ -212,6 +212,7 @@ function buildScenario(values, options = {}) {
   const roundedSelfConsumed = Math.round(selfConsumed);
   const roundedSurplus = Math.round(surplus);
   const roundedGridPurchase = Math.round(gridPurchase);
+  const roundedSystemLosses = Math.max(0, production - roundedSelfConsumed - roundedSurplus);
   const electricityRate = Number(state.electricityRate || 0);
   const billBefore = consumption * electricityRate;
   const billReduction = Math.round(roundedSelfConsumed * electricityRate);
@@ -222,9 +223,11 @@ function buildScenario(values, options = {}) {
     consumption,
     selfConsumed: roundedSelfConsumed,
     surplus: roundedSurplus,
+    systemLosses: roundedSystemLosses,
     gridPurchase: roundedGridPurchase,
     selfUsePercent: production ? Math.round((roundedSelfConsumed / production) * 100) : 0,
     surplusPercent: production ? Math.round((roundedSurplus / production) * 100) : 0,
+    systemLossPercent: production ? Math.max(0, 100 - Math.round((roundedSelfConsumed / production) * 100) - Math.round((roundedSurplus / production) * 100)) : 0,
     coverage: consumption ? Math.round((roundedSelfConsumed / consumption) * 100) : 0,
     billReductionPercent: billBefore ? Math.round(((roundedSelfConsumed * electricityRate) / billBefore) * 100) : 0,
     billReduction,
@@ -495,10 +498,16 @@ function curveInputs(label, key) {
 function renderDonut(scenario = simulation().projectScenario) {
   const selfUse = scenario.selfUsePercent;
   const sold = scenario.surplusPercent;
+  const losses = scenario.systemLossPercent;
   return `
     <canvas class="donut" width="140" height="140" data-self="${selfUse}" aria-label="Répartition de la production"></canvas>
-    <p class="self-used"><strong>Autoconsommé</strong> ${selfUse}% <small>${formatNumber(scenario.selfConsumed)} kWh</small></p>
-    <p class="exported-surplus"><strong>Surplus injecté</strong> ${sold}% <small>${formatNumber(scenario.surplus)} kWh</small></p>
+    <p class="self-used"><strong>Production solaire autoconsommée</strong> ${selfUse}% <small>${formatNumber(scenario.selfConsumed)} kWh</small></p>
+    <p class="exported-surplus"><strong>Énergie réinjectée sur le réseau</strong> ${sold}% <small>${formatNumber(scenario.surplus)} kWh</small></p>
+    ${
+      losses > 0
+        ? `<p class="system-losses"><strong>Pertes système éventuelles</strong> ${losses}% <small>${formatNumber(scenario.systemLosses)} kWh</small></p>`
+        : ''
+    }
   `;
 }
 
@@ -670,7 +679,7 @@ function renderReport() {
 
         <div class="panel split-panel">
           ${sectionNumber(5, 'RÉPARTITION')}
-          <div class="coverage"><strong>ÉNERGIE SOLAIRE UTILISÉE</strong><b>${coverage} %</b></div>
+          <div class="coverage"><strong>CONSOMMATION DU FOYER COUVERTE PAR LE SOLAIRE</strong><b>${coverage} %</b></div>
           ${renderDonut(projectScenario)}
         </div>
       </section>
@@ -726,7 +735,7 @@ function renderReport() {
               <div><dt>Coût du projet</dt><dd>${money(solarProjectCost)}</dd></div>
               <div class="highlight"><dt>Gain annuel estimé</dt><dd>${money(withoutBattery.totalGain)} <small>/ an</small></dd></div>
               <div><dt>Facture réduite d’environ</dt><dd>${withoutBattery.billReductionPercent} %</dd></div>
-              <div><dt>Énergie solaire utilisée</dt><dd>${withoutBattery.coverage} %</dd></div>
+              <div><dt>Consommation couverte par le solaire</dt><dd>${withoutBattery.coverage} %</dd></div>
               <div><dt>Retour estimé</dt><dd>${roiYears(withoutBattery.totalGain, solarProjectCost)} ans</dd></div>
             </dl>
           </div>
@@ -736,7 +745,7 @@ function renderReport() {
               <div><dt>Coût du projet</dt><dd>${money(batteryProjectCost)}</dd></div>
               <div class="highlight"><dt>Gain annuel estimé</dt><dd>${money(withBattery.totalGain)} <small>/ an</small></dd></div>
               <div><dt>Facture réduite d’environ</dt><dd>${withBattery.billReductionPercent} %</dd></div>
-              <div><dt>Énergie solaire utilisée</dt><dd>${withBattery.coverage} %</dd></div>
+              <div><dt>Consommation couverte par le solaire</dt><dd>${withBattery.coverage} %</dd></div>
               <div><dt>Retour estimé</dt><dd>${roiYears(withBattery.totalGain, batteryProjectCost)} ans</dd></div>
             </dl>
           </div>

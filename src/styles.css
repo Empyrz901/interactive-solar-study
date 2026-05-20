@@ -933,6 +933,8 @@ summary {
 
 .coverage strong {
   color: #f5a20a;
+  font-size: 8.5px;
+  line-height: 1.15;
 }
 
 .coverage b {
@@ -961,14 +963,16 @@ summary {
 .split-panel p {
   display: flex;
   justify-content: space-between;
-  margin: 0 0 12px;
-  font-size: 10px;
+  gap: 6px;
+  margin: 0 0 8px;
+  text-align: left;
+  font-size: 8.2px;
 }
 
 .split-panel p small {
   margin-left: 4px;
   color: #667085;
-  font-size: 8px;
+  font-size: 7.2px;
 }
 
 .split-panel .self-used strong {
@@ -977,6 +981,10 @@ summary {
 
 .split-panel .exported-surplus strong {
   color: #f5a20a;
+}
+
+.split-panel .system-losses strong {
+  color: #687386;
 }
 
 .savings-panel,
