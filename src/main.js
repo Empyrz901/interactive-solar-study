@@ -754,8 +754,10 @@ function renderReport() {
 
       <footer class="report-footer">
         <span>Document non contractuel — HABITONTOIT 3 rue du Champenatre 25770 Serre-Les-Sapins</span>
-        <strong>Nom commercial : ${state.consultant}</strong>
-        <span>Téléphone : ${state.phone}</span>
+        <div class="footer-contact">
+          <strong>${state.consultant}</strong>
+          <span>${state.phone}</span>
+        </div>
       </footer>
     </article>
   `;
