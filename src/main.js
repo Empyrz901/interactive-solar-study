@@ -590,8 +590,6 @@ function renderReport() {
   const production = projectScenario.production;
   const consumption = projectScenario.consumption;
   const coverage = projectScenario.coverage;
-  const batteryEconomy = withBattery.totalGain;
-  const batterySelfUsePercent = withBattery.selfUsePercent;
   const projectCost = projectScenario.projectCost;
   const solarProjectCost = withoutBattery.projectCost;
   const batteryProjectCost = withBattery.projectCost;
@@ -720,25 +718,27 @@ function renderReport() {
       </section>
 
       <section class="battery-panel">
-        <div class="battery-title"><strong>AVEC ou SANS BATTERIE — Quel impact pour vous ?</strong><em>Comparaison sur 20 ans</em></div>
-        <div class="battery-grid">
-          <div>
-            <h3>SANS BATTERIE</h3>
-            <p>Simulation horaire directe</p>
-            <dl><div><dt>Autoconsommation</dt><dd>${withoutBattery.selfUsePercent} %</dd></div><div><dt>Énergie utilisée</dt><dd>${withoutBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withoutBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(withoutBattery.totalGain)}</dd></div></dl>
+        <div class="battery-title"><strong>COMPARAISON DU PROJET</strong><em>Solaire seul ou solaire + batterie</em></div>
+        <div class="project-comparison-grid">
+          <div class="comparison-card without-storage">
+            <h3>SOLAIRE SEUL</h3>
+            <dl>
+              <div><dt>Coût du projet</dt><dd>${money(solarProjectCost)}</dd></div>
+              <div class="highlight"><dt>Gain annuel estimé</dt><dd>${money(withoutBattery.totalGain)} <small>/ an</small></dd></div>
+              <div><dt>Facture réduite d’environ</dt><dd>${withoutBattery.billReductionPercent} %</dd></div>
+              <div><dt>Énergie solaire utilisée</dt><dd>${withoutBattery.coverage} %</dd></div>
+              <div><dt>Retour estimé</dt><dd>${roiYears(withoutBattery.totalGain, solarProjectCost)} ans</dd></div>
+            </dl>
           </div>
-          <div>
-            <h3>AVEC BATTERIE</h3>
-            <p>Stockage ${formatDecimal(state.batteryCapacity)} kWh, rendement ${Math.round(Number(state.batteryEfficiency || 0) * 100)} %</p>
-            <dl><div><dt>Autoconsommation</dt><dd>${batterySelfUsePercent} %</dd></div><div><dt>Énergie utilisée</dt><dd>${withBattery.coverage} %</dd></div><div><dt>Surplus injecté</dt><dd>${formatNumber(withBattery.surplus)} kWh</dd></div><div><dt>Gain/an</dt><dd>${money(batteryEconomy)}</dd></div></dl>
-          </div>
-          <div>
-            <h3>PLUS D’AUTONOMIE</h3>
-            <ul class="autonomy-list">
-              <li>✔ Utilisez davantage votre propre énergie</li>
-              <li>✔ Plus d’énergie disponible le soir</li>
-              <li>✔ Achat réseau évité</li>
-            </ul>
+          <div class="comparison-card with-storage">
+            <h3>SOLAIRE + BATTERIE</h3>
+            <dl>
+              <div><dt>Coût du projet</dt><dd>${money(batteryProjectCost)}</dd></div>
+              <div class="highlight"><dt>Gain annuel estimé</dt><dd>${money(withBattery.totalGain)} <small>/ an</small></dd></div>
+              <div><dt>Facture réduite d’environ</dt><dd>${withBattery.billReductionPercent} %</dd></div>
+              <div><dt>Énergie solaire utilisée</dt><dd>${withBattery.coverage} %</dd></div>
+              <div><dt>Retour estimé</dt><dd>${roiYears(withBattery.totalGain, batteryProjectCost)} ans</dd></div>
+            </dl>
           </div>
         </div>
       </section>
