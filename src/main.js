@@ -42,6 +42,9 @@ const state = {
   batteryCost: 6900,
   evKmPerYear: '',
   evChargeMoment: 'night',
+  energyMode: 'monthly',
+  quickProductionAnnual: pvProfile.reduce((sum, value) => sum + value, 0),
+  quickConsumptionAnnual: 4990,
   pvCurve: buildPvCurve(12, 500),
   consoCurve: buildConsumptionCurve(4990),
   importMessage: '',
@@ -53,16 +56,42 @@ const state = {
 };
 
 function buildPvCurve(panels, panelWc) {
-  return [...pvProfile];
+  return buildPvCurveFromAnnual(pvProfile.reduce((sum, value) => sum + value, 0));
+}
+
+function distributeAnnualByProfile(annualTarget, profile) {
+  const target = Number(annualTarget || 0);
+  const profileTotal = profile.reduce((sum, value) => sum + value, 0);
+  const monthly = profile.map((value) => Math.round((value / profileTotal) * target));
+  const delta = Math.round(target) - monthly.reduce((sum, value) => sum + value, 0);
+  monthly[monthly.length - 1] += delta;
+  return monthly;
+}
+
+function buildPvCurveFromAnnual(production) {
+  return distributeAnnualByProfile(production, pvProfile);
 }
 
 function buildConsumptionCurve(consumption) {
-  const annualTarget = Number(consumption || 0);
-  const profileTotal = consoProfile.reduce((sum, value) => sum + value, 0);
-  const monthly = consoProfile.map((value) => Math.round((value / profileTotal) * annualTarget));
-  const delta = Math.round(annualTarget) - monthly.reduce((sum, value) => sum + value, 0);
-  monthly[monthly.length - 1] += delta;
-  return monthly;
+  return distributeAnnualByProfile(consumption, consoProfile);
+}
+
+function hasMonthlyEnergyData() {
+  return [state.pvCurve, state.consoCurve].every(
+    (curve) => Array.isArray(curve) && curve.length === 12 && curve.some((value) => Number(value || 0) > 0)
+  );
+}
+
+function activeEnergyMode() {
+  return state.energyMode === 'quick' || !hasMonthlyEnergyData() ? 'quick' : 'monthly';
+}
+
+function activeProductionCurve() {
+  return activeEnergyMode() === 'quick' ? buildPvCurveFromAnnual(state.quickProductionAnnual) : state.pvCurve;
+}
+
+function activeConsumptionCurve() {
+  return activeEnergyMode() === 'quick' ? buildConsumptionCurve(state.quickConsumptionAnnual) : state.consoCurve;
 }
 
 function formatNumber(value) {
@@ -82,11 +111,11 @@ function kwc() {
 }
 
 function annualProduction() {
-  return state.pvCurve.reduce((sum, value) => sum + Number(value || 0), 0);
+  return activeProductionCurve().reduce((sum, value) => sum + Number(value || 0), 0);
 }
 
 function adjustedConsumption() {
-  return state.consoCurve.reduce((sum, value) => sum + Number(value || 0), 0) + annualEvConsumption();
+  return activeConsumptionCurve().reduce((sum, value) => sum + Number(value || 0), 0) + annualEvConsumption();
 }
 
 function netCost() {
@@ -137,8 +166,8 @@ function distributeMonthlyToHours(monthlyValues, weightForHour) {
 }
 
 function hourlySeries() {
-  const production = distributeMonthlyToHours(state.pvCurve, hourlyProductionWeight);
-  const baseConsumption = distributeMonthlyToHours(state.consoCurve, (hour) => hourlyConsumptionWeight(hour));
+  const production = distributeMonthlyToHours(activeProductionCurve(), hourlyProductionWeight);
+  const baseConsumption = distributeMonthlyToHours(activeConsumptionCurve(), (hour) => hourlyConsumptionWeight(hour));
   const evAnnual = annualEvConsumption();
   const evConsumption = evAnnual
     ? distributeMonthlyToHours(
@@ -385,6 +414,7 @@ async function importMonthlyFile(file, key) {
     }
 
     state[key] = monthlyValues;
+    state.energyMode = 'monthly';
     state.importMessage = `${key === 'pvCurve' ? 'Production PVGIS' : 'Consommation'} importée : ${formatNumber(detectAnnualValue(text, monthlyValues))} kWh/an.`;
     render();
   } catch (error) {
@@ -406,7 +436,9 @@ function money(value) {
 }
 
 function renderChart() {
-  const maxValue = Math.max(...state.pvCurve, ...state.consoCurve, 100);
+  const pvCurve = activeProductionCurve();
+  const consoCurve = activeConsumptionCurve();
+  const maxValue = Math.max(...pvCurve, ...consoCurve, 100);
   const max = Math.ceil(maxValue / 100) * 100;
   const axis = [max, max * 0.8, max * 0.6, max * 0.4, max * 0.2, 0];
   const width = 620;
@@ -419,8 +451,8 @@ function renderChart() {
     const y = pad.top + plotHeight - (Number(value || 0) / max) * plotHeight;
     return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
   };
-  const pvPoints = state.pvCurve.map(point);
-  const consoPoints = state.consoCurve.map(point);
+  const pvPoints = pvCurve.map(point);
+  const consoPoints = consoCurve.map(point);
   const path = (points) => points.map(([x, y], index) => `${index ? 'L' : 'M'} ${x} ${y}`).join(' ');
   const areaPath = `M ${consoPoints[0][0]} ${pad.top + plotHeight} L ${consoPoints
     .map(([x, y]) => `${x} ${y}`)
@@ -493,19 +525,42 @@ function verificationTable() {
   return `
     <div class="verification-table">
       <h4>Tableau de vérification avant génération PDF</h4>
-      <div class="verification-head"><span>Mois</span><span>Consommation</span><span>Production</span></div>
+      <div class="verification-head"><span>Mois</span><span>Production</span><span>Consommation</span></div>
       ${monthNames
         .map(
           (month, index) => `
             <div class="verification-row">
               <span>${month}</span>
-              <input name="consoCurve:${index}" type="number" min="0" value="${state.consoCurve[index]}" />
               <input name="pvCurve:${index}" type="number" min="0" value="${state.pvCurve[index]}" />
+              <input name="consoCurve:${index}" type="number" min="0" value="${state.consoCurve[index]}" />
             </div>
           `
         )
         .join('')}
     </div>
+  `;
+}
+
+function quickEntryPanel() {
+  return `
+    <div class="quick-entry-panel">
+      <div class="form-grid">
+        ${input('Production annuelle (kWh/an)', 'quickProductionAnnual', 'number', 'min="0"')}
+        ${input('Consommation annuelle (kWh/an)', 'quickConsumptionAnnual', 'number', 'min="0"')}
+      </div>
+      <p>Le logiciel génère automatiquement une répartition mensuelle estimée avec un profil standard résidentiel.</p>
+    </div>
+  `;
+}
+
+function energyDataTabs() {
+  const currentMode = activeEnergyMode();
+  return `
+    <div class="energy-tabs" role="tablist" aria-label="Mode de saisie des données énergétiques">
+      <button type="button" class="${currentMode === 'monthly' ? 'active' : ''}" data-energy-mode="monthly">Vérification des données mensuelles</button>
+      <button type="button" class="${currentMode === 'quick' ? 'active' : ''}" data-energy-mode="quick">Saisie rapide</button>
+    </div>
+    ${currentMode === 'quick' ? quickEntryPanel() : verificationTable()}
   `;
 }
 
@@ -781,8 +836,8 @@ function renderControls() {
       </details>
 
       <details open>
-        <summary>Vérification des données mensuelles</summary>
-        ${verificationTable()}
+        <summary>Données énergétiques</summary>
+        ${energyDataTabs()}
       </details>
 
       <details>
@@ -838,6 +893,7 @@ function bindEvents() {
     if (field.name.includes(':')) {
       field.addEventListener('input', (event) => {
         const [key, index] = event.target.name.split(':');
+        state.energyMode = 'monthly';
         state[key][Number(index)] = Number(event.target.value) || 0;
         renderPreview();
       });
@@ -846,7 +902,15 @@ function bindEvents() {
 
     field.addEventListener(field.tagName === 'SELECT' ? 'change' : 'input', (event) => {
       state[event.target.name] = event.target.value;
+      if (event.target.name.startsWith('quick')) state.energyMode = 'quick';
       renderPreview();
+    });
+  });
+
+  document.querySelectorAll('[data-energy-mode]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.energyMode = button.dataset.energyMode;
+      render();
     });
   });
 
