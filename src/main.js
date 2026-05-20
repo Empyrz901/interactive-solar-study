@@ -9,16 +9,6 @@ const consoProfile = [480, 450, 410, 350, 300, 270, 260, 280, 330, 390, 450, 490
 const defaultElectricityRate = 0.194;
 const defaultExportRate = 0.04;
 const defaultBatteryEfficiency = 0.9;
-const defaultEvConsumptionPer100 = 17;
-const yesNoOptions = {
-  no: 'Non',
-  yes: 'Oui'
-};
-const rechargeProfiles = {
-  night: 'Nuit',
-  day: 'Journée',
-  mixed: 'Mixte'
-};
 
 const state = {
   clientName: '',
@@ -27,21 +17,18 @@ const state = {
   reference: '',
   heating: 'Électrique',
   occupants: '4',
-  evEnabled: 'no',
   panels: 12,
   panelWc: 500,
   inverter: 'Micro-onduleurs',
   orientation: 'Sud / Ouest',
   tilt: '35',
   installType: 'Surimposition toiture',
-  price: 12900,
+  price: 7000,
   electricityRate: defaultElectricityRate,
   exportRate: defaultExportRate,
   batteryCapacity: 10,
   batteryEfficiency: defaultBatteryEfficiency,
-  batteryCost: 6900,
-  evKmPerYear: '',
-  evChargeMoment: 'night',
+  batteryCost: 2000,
   energyMode: 'monthly',
   quickProductionAnnual: pvProfile.reduce((sum, value) => sum + value, 0),
   quickConsumptionAnnual: 4990,
@@ -50,9 +37,8 @@ const state = {
   importMessage: '',
   photo: '',
   photoMode: 'landscape',
-  consultant: 'VOTRE EXPERT PHOTOVOLTAÏQUE',
-  phone: '0648042171',
-  email: 'habitontoit@gmail.com'
+  consultant: 'DAOUDI SAMY',
+  phone: '06 48 04 21 71'
 };
 
 function buildPvCurve(panels, panelWc) {
@@ -94,19 +80,9 @@ function activeConsumptionCurve() {
   return activeEnergyMode() === 'quick' ? buildConsumptionCurve(state.quickConsumptionAnnual) : state.consoCurve;
 }
 
-function monthlyEvConsumptionCurve() {
-  const evAnnual = annualEvConsumption();
-  return evAnnual ? distributeAnnualByProfile(evAnnual, monthDays) : Array(12).fill(0);
-}
-
-function monthlyConsumptionCurveWithEv() {
-  const evCurve = monthlyEvConsumptionCurve();
-  return activeConsumptionCurve().map((value, index) => Number(value || 0) + Number(evCurve[index] || 0));
-}
-
 function energyDataCheck() {
   const productionCurve = activeProductionCurve();
-  const consumptionCurve = monthlyConsumptionCurveWithEv();
+  const consumptionCurve = activeConsumptionCurve();
   const productionMonthly = Math.round(productionCurve.reduce((sum, value) => sum + Number(value || 0), 0));
   const consumptionMonthly = Math.round(consumptionCurve.reduce((sum, value) => sum + Number(value || 0), 0));
   const productionAnnual = annualProduction();
@@ -144,7 +120,7 @@ function annualProduction() {
 }
 
 function adjustedConsumption() {
-  return Math.round(activeConsumptionCurve().reduce((sum, value) => sum + Number(value || 0), 0) + annualEvConsumption());
+  return Math.round(activeConsumptionCurve().reduce((sum, value) => sum + Number(value || 0), 0));
 }
 
 function netCost() {
@@ -154,23 +130,6 @@ function netCost() {
 function hourlyConsumptionWeight(hour, profile) {
   const standard = [0.55, 0.48, 0.45, 0.43, 0.45, 0.58, 0.85, 1.05, 0.95, 0.78, 0.68, 0.62, 0.65, 0.68, 0.72, 0.82, 1.05, 1.35, 1.55, 1.45, 1.18, 0.95, 0.78, 0.65];
   return standard[hour];
-}
-
-function evProfileComplete() {
-  return state.evEnabled === 'yes' && Number(state.evKmPerYear || 0) > 0;
-}
-
-function annualEvConsumption() {
-  if (!evProfileComplete()) return 0;
-  return (Number(state.evKmPerYear) * defaultEvConsumptionPer100) / 100;
-}
-
-function evHourlyWeight(hour) {
-  const night = [1.3, 1.35, 1.25, 1.05, 0.8, 0.45, 0.2, 0.08, 0, 0, 0, 0, 0, 0, 0.05, 0.1, 0.25, 0.45, 0.7, 0.95, 1.15, 1.3, 1.35, 1.35];
-  const day = [0, 0, 0, 0, 0, 0, 0.05, 0.15, 0.35, 0.65, 0.95, 1.15, 1.25, 1.2, 1.05, 0.82, 0.55, 0.3, 0.15, 0.05, 0, 0, 0, 0];
-  const mixed = night.map((value, index) => value * 0.5 + day[index] * 0.5);
-  const selected = state.evChargeMoment === 'day' ? day : state.evChargeMoment === 'mixed' ? mixed : night;
-  return selected[hour];
 }
 
 function hourlyProductionWeight(hour, monthIndex) {
@@ -197,17 +156,10 @@ function distributeMonthlyToHours(monthlyValues, weightForHour) {
 function hourlySeries() {
   const production = distributeMonthlyToHours(activeProductionCurve(), hourlyProductionWeight);
   const baseConsumption = distributeMonthlyToHours(activeConsumptionCurve(), (hour) => hourlyConsumptionWeight(hour));
-  const evAnnual = annualEvConsumption();
-  const evConsumption = evAnnual
-    ? distributeMonthlyToHours(
-        monthlyEvConsumptionCurve(),
-        (hour) => evHourlyWeight(hour)
-      )
-    : [];
 
   return {
     production,
-    consumption: baseConsumption.map((value, index) => value + (evConsumption[index] || 0))
+    consumption: baseConsumption
   };
 }
 
@@ -466,7 +418,7 @@ function money(value) {
 
 function renderChart() {
   const pvCurve = activeProductionCurve();
-  const consoCurve = monthlyConsumptionCurveWithEv();
+  const consoCurve = activeConsumptionCurve();
   const maxValue = Math.max(...pvCurve, ...consoCurve, 100);
   const max = Math.ceil(maxValue / 100) * 100;
   const axis = [max, max * 0.8, max * 0.6, max * 0.4, max * 0.2, 0];
@@ -641,6 +593,8 @@ function renderReport() {
   const batteryEconomy = withBattery.totalGain;
   const batterySelfUsePercent = withBattery.selfUsePercent;
   const projectCost = projectScenario.projectCost;
+  const solarProjectCost = withoutBattery.projectCost;
+  const batteryProjectCost = withBattery.projectCost;
   return `
     <article id="report" class="report" aria-label="Étude photovoltaïque">
       <header class="report-header">
@@ -690,8 +644,7 @@ function renderReport() {
           </dl>
           <h3>PROFIL :</h3>
           <ul>
-            <li class="active">Profil standard résidentiel</li>
-            ${evProfileComplete() ? `<li class="active">Véhicule électrique + ${formatNumber(annualEvConsumption())} kWh/an</li>` : ''}
+            <li class="active">✔ Standard résidentiel</li>
           </ul>
         </div>
 
@@ -740,7 +693,10 @@ function renderReport() {
 
         <div class="panel cost-panel">
           ${sectionNumber(7, 'COÛT & RENTABILITÉ')}
-          <div class="project-cost"><span>Coût total du projet</span><strong>${money(projectCost)}</strong></div>
+          <div class="project-costs">
+            <div class="project-cost"><span>Projet solaire seul</span><strong>${money(solarProjectCost)}</strong></div>
+            <div class="project-cost with-battery-cost"><span>Projet avec batterie</span><strong>${money(batteryProjectCost)}</strong></div>
+          </div>
           <div class="roi"><span>RETOUR SUR INVESTISSEMENT</span><strong>${roiYears(projectScenario.totalGain, projectCost)} ans</strong><small>Estimation basée sur le gain annuel</small></div>
         </div>
 
@@ -789,8 +745,8 @@ function renderReport() {
 
       <footer class="report-footer">
         <span>Document non contractuel — HABITONTOIT 3 rue du Champenatre 25770 Serre-Les-Sapins</span>
-        <strong>${state.consultant}</strong>
-        <span>${state.phone} · ${state.email}</span>
+        <strong>Nom commercial : ${state.consultant}</strong>
+        <span>Téléphone : ${state.phone}</span>
       </footer>
     </article>
   `;
@@ -823,16 +779,6 @@ function renderControls() {
           ${input('Chauffage', 'heating')}
           ${input('Occupants', 'occupants', 'number', 'min="1"')}
         </div>
-      </details>
-
-      <details open>
-        <summary>Véhicule électrique</summary>
-        <div class="form-grid">
-          ${select('Véhicule électrique', 'evEnabled', yesNoOptions)}
-          ${input('Kilométrage annuel (km/an)', 'evKmPerYear', 'number', 'min="0"')}
-          ${select('Recharge principalement', 'evChargeMoment', rechargeProfiles)}
-        </div>
-        <p class="ev-note">Consommation moyenne utilisée automatiquement : ${defaultEvConsumptionPer100} kWh/100 km.</p>
       </details>
 
       <details open>
@@ -881,7 +827,6 @@ function renderControls() {
         <div class="form-grid">
           ${input('Nom commercial', 'consultant')}
           ${input('Téléphone', 'phone')}
-          ${input('Email', 'email', 'email')}
         </div>
       </details>
     </aside>

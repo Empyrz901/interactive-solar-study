@@ -151,13 +151,6 @@ summary {
   font-weight: 700;
 }
 
-.ev-note {
-  margin: -4px 16px 16px;
-  color: #667085;
-  font-size: 12px;
-  font-weight: 700;
-}
-
 .energy-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1127,14 +1120,26 @@ summary {
   padding-top: 8px;
 }
 
+.project-costs {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
 .project-cost {
   display: grid;
+  grid-template-columns: 1fr auto;
   gap: 6px;
-  margin-bottom: 12px;
-  padding: 10px 12px;
+  align-items: end;
+  padding: 8px 10px;
   border-radius: 6px;
   background: #edf6fd;
   color: #0d2e4b;
+}
+
+.project-cost.with-battery-cost {
+  background: #e8f8ee;
+  color: #145c38;
 }
 
 .project-cost span {
@@ -1143,9 +1148,9 @@ summary {
 }
 
 .project-cost strong {
-  justify-self: end;
-  font-size: 24px;
+  font-size: 19px;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .total {
@@ -1395,8 +1400,8 @@ summary {
   right: 22px;
   bottom: 10px;
   display: grid;
-  grid-template-columns: 1fr 220px 1fr;
-  gap: 8px;
+  grid-template-columns: 1fr auto auto;
+  gap: 16px;
   align-items: center;
   font-size: 7.5px;
   color: #b9c5d0;
@@ -1404,12 +1409,15 @@ summary {
 }
 
 .report-footer strong {
-  justify-self: center;
+  justify-self: end;
   text-align: center;
-  font-size: 8px;
+  color: #0d2e4b;
+  font-size: 8.5px;
 }
 
 .report-footer span:last-child {
+  color: #0d2e4b;
+  font-weight: 800;
   text-align: right;
 }
 
