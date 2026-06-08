@@ -1246,14 +1246,14 @@ summary {
 
 .projection-table {
   display: grid;
-  gap: 8px;
+  gap: 5px;
 }
 
 .projection-head,
 .projection-row {
   display: grid;
-  grid-template-columns: 58px 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
   align-items: center;
 }
 
@@ -1265,11 +1265,11 @@ summary {
 }
 
 .projection-row {
-  min-height: 40px;
-  padding: 7px;
+  min-height: 34px;
+  padding: 5px 6px;
   border-radius: 6px;
   background: #fff;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
 }
 
@@ -1278,10 +1278,10 @@ summary {
 }
 
 .projection-row strong {
-  padding: 6px 8px;
+  padding: 5px 6px;
   border-radius: 4px;
   text-align: right;
-  font-size: 14px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -1299,7 +1299,7 @@ summary {
   position: absolute;
   left: 22px;
   right: 22px;
-  bottom: 30px;
+  bottom: 38px;
   min-height: 138px;
   border: 1px solid #29b263;
   border-radius: 8px;

@@ -711,7 +711,7 @@ function renderReport() {
           ${sectionNumber(8, 'ÉCONOMIE RÉALISÉE')}
           <div class="projection-table">
             <div class="projection-head"><span></span><strong>Sans batterie</strong><strong>Avec batterie</strong></div>
-            ${[10, 15, 20]
+            ${[10, 15, 20, 25]
               .map(
                 (years) => `
                   <div class="projection-row">
